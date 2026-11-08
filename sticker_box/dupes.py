@@ -8,7 +8,6 @@ import sqlite3
 import numpy as np
 
 from . import db
-from .phash import to_hex
 
 DEGENERATE_BITS = 4
 
@@ -67,4 +66,93 @@ def hex_hashes(summary: dict) -> list[int]:
     return [int(k["phash"], 16) for k in summary["keyframes"]]
 
 
-__all__ = ["find", "hex_hashes", "to_hex"]
+def _edge_summary(kind: str, method: str, score, transform: str | None) -> str:
+    if method == "sift" and transform:
+        import json
+
+        from . import features
+
+        return features.summary(kind, json.loads(transform)) + f" ({int(score)} matching points)"
+    return f"{kind.replace('_', ' ')} (pHash distance {int(score)})" if score is not None else kind
+
+
+def clusters(box, kinds: set[str] | None = None) -> list[dict]:
+    """Groups of items linked by relations, each with a suggested keeper: the largest, then the oldest."""
+    conn = box.conn
+    rels = [r for r in conn.execute("SELECT a, b, kind, method, score, transform FROM relation") if not kinds or r["kind"] in kinds]
+    parent: dict[str, str] = {}
+
+    def root(x: str) -> str:
+        parent.setdefault(x, x)
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    for r in rels:
+        parent[root(r["a"])] = root(r["b"])
+    groups: dict[str, list[str]] = {}
+    for x in list(parent):
+        groups.setdefault(root(x), []).append(x)
+    out = []
+    for members in groups.values():
+        if len(members) < 2:
+            continue
+        rows = [conn.execute("SELECT sha256, file, width, height, bytes, added_at, animated FROM item WHERE sha256 = ?", (m,)).fetchone() for m in members]
+        rows = [r for r in rows if r is not None]
+        keeper = max(rows, key=lambda r: (r["width"] * r["height"], r["animated"], [-ord(c) for c in r["added_at"]]))
+        member_set = {r["sha256"] for r in rows}
+        out.append({
+            "keeper": keeper["sha256"],
+            "members": [{"ref": r["sha256"], "file": str(box.root / r["file"]), "size": f"{r['width']}x{r['height']}",
+                         "bytes": r["bytes"], "added_at": r["added_at"], "animated": bool(r["animated"])} for r in rows],
+            "links": [{"a": r["a"], "b": r["b"], "kind": r["kind"], "how": _edge_summary(r["kind"], r["method"], r["score"], r["transform"])}
+                      for r in rels if r["a"] in member_set],
+        })
+    out.sort(key=lambda c: -len(c["members"]))
+    return out
+
+
+def reindex(box) -> dict:
+    """Rebuild keyframes, features and relations from the stored files, oldest first, so every
+    relation points from a newer item to an older one, as at commit."""
+    import json
+
+    from . import analysis, clock, features
+
+    conn = box.conn
+    policy = box.policy()
+    sift = policy["duplicates"]["sift"]
+    rows = conn.execute("SELECT sha256, file, animated, width, height FROM item ORDER BY added_at, sha256").fetchall()
+    with db.transaction(conn):
+        conn.execute("DELETE FROM relation")
+        conn.execute("DELETE FROM feature")
+    done: set[str] = set()
+    counts = {"items": 0, "relations": 0, "with_features": 0}
+    for row in rows:
+        sha = row["sha256"]
+        result = analysis.analyze(box.root / row["file"], policy["analysis"])
+        hashes = [k.phash for k in result.keyframes]
+        matches = [m for m in find(conn, hashes, bool(row["animated"]), policy["duplicates"]["phash_max_distance"], exclude=sha) if m["ref"] in done]
+        sets = features.compute(result, policy) if sift else []
+        if sift:
+            seen = {m["ref"] for m in matches}
+            matches += [m for m in features.match(conn, sets, (row["width"], row["height"]), sift, exclude=sha) if m["ref"] not in seen]
+        stamp = clock.stamp()
+        with db.transaction(conn):
+            conn.execute("DELETE FROM keyframe WHERE sha256 = ?", (sha,))
+            conn.executemany("INSERT INTO keyframe (sha256, idx, frame_no, t_ms, phash) VALUES (?, ?, ?, ?, ?)",
+                             [(sha, i, k.frame_no, k.t_ms, db.to_signed(k.phash)) for i, k in enumerate(result.keyframes)])
+            conn.execute("UPDATE item SET phash = ? WHERE sha256 = ?", (db.to_signed(result.phash), sha))
+            conn.executemany("INSERT INTO feature (sha256, frame, extractor, n, kp, desc) VALUES (?, ?, ?, ?, ?, ?)",
+                             [(sha, idx, features.EXTRACTOR, int(kp.shape[0]), kp.astype(np.float32).tobytes(), desc.tobytes()) for idx, kp, desc in sets])
+            conn.executemany(
+                "INSERT OR REPLACE INTO relation (a, b, kind, method, score, transform, found_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                [(sha, m["ref"], m["kind"], m.get("method", "phash"), m.get("distance", m.get("inliers")),
+                  json.dumps(m["transform"]) if m.get("transform") else None, stamp) for m in matches],
+            )
+        done.add(sha)
+        counts["items"] += 1
+        counts["relations"] += len(matches)
+        counts["with_features"] += bool(sets)
+    return counts

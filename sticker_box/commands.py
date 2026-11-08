@@ -338,6 +338,21 @@ def cmd_search(args) -> dict:
     return result
 
 
+def cmd_dupes(args) -> dict:
+    from . import dupes
+
+    return {"clusters": dupes.clusters(open_box(args), set(args.kind) if args.kind else None)}
+
+
+def cmd_reindex(args) -> dict:
+    from . import dupes
+
+    box = open_box(args)
+    result = dupes.reindex(box)
+    box.write_readme()
+    return result
+
+
 def register(sub: argparse._SubParsersAction, common: argparse.ArgumentParser) -> None:
     def add(name: str, handler, help_text: str, parent=sub):
         p = parent.add_parser(name, parents=[common], help=help_text, description=help_text)
@@ -473,3 +488,7 @@ def register(sub: argparse._SubParsersAction, common: argparse.ArgumentParser) -
     kind.add_argument("--static", action="store_true")
     p.add_argument("--license", help="only items whose licence contains this")
     p.add_argument("--limit", type=int, default=10)
+
+    p = add("dupes", cmd_dupes, "groups of duplicates, crops, rotations and frames, each with a suggested keeper")
+    p.add_argument("--kind", action="append", help="only these relation kinds (near_duplicate, duplicate, crop_of, contains, rotation, overlap, frame_of, has_frame, shares_frames)")
+    add("reindex", cmd_reindex, "rebuild keyframes, local features and relations from the stored files (slow on big boxes)")

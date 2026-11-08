@@ -80,13 +80,14 @@ Tick a box in the same commit as the work. Bold lines are a milestone's exit cri
 - [x] Results carry the absolute file path, tags and note, so a caller can send directly
 - [x] **On the tagged box from M4, ten realistic queries (two-character Chinese included) return sensible top-5 results**
 - [ ] Security code review of M0 to M5 (§12); findings fixed or recorded
-  - running (subagent, 2026-11-08); next: fix or record its findings
+  - review done 2026-11-08: 14 findings (5 high-impact). Next: fix them one by one; list in `261108-SECURITY-REVIEW-M5.md`
 
 ### M6. Local features (gallery)
-- [ ] SIFT extraction, capped keypoints, uint8 descriptors and float32 keypoints into `feature` in `box.sqlite3`; only when the policy enables it
-- [ ] Insert-time matching: batched vote shortlist, pairwise ratio test and RANSAC on the top candidates (§8)
-- [ ] Relation kinds from the homography: duplicate, crop, zoom, rotation, with region, scale and angle in `transform`
-- [ ] `dupes`: clusters from `relation` with a suggested keeper; `reindex` rebuilds features and relations
+- [x] SIFT extraction, capped keypoints, uint8 descriptors and float32 keypoints into `feature` in `box.sqlite3`; only when the policy enables it
+- [x] Insert-time matching: batched vote shortlist, pairwise ratio test and RANSAC on the top candidates (§8); RANSAC fits a similarity transform, not a full homography (see decisions)
+- [x] Relation kinds from the homography: duplicate, crop, zoom, rotation, with region, scale and angle in `transform`
+- [x] `dupes`: clusters from `relation` with a suggested keeper; `reindex` rebuilds features and relations
+  - tests still to write
 - [ ] Threshold tuning on real images (crops, rotations, QQ-style screenshots, text-heavy images); numbers and chosen defaults in a dated note
 - [ ] **On a gallery of a few hundred corpus images plus generated crops, rotations and screenshots, crops and rotations are linked, unrelated images are not, and insert stays under a few seconds at 3,000 images (synthetic scale test)**
 

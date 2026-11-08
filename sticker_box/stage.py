@@ -142,7 +142,12 @@ def ensure_fresh(box, policy: dict, sha: str) -> dict:
     sidecar = load_sidecar(box, sha)
     if not staged_file(box, sidecar).is_file():
         raise BoxError("not_found", f"the staged file for {sha} is gone (temporary/ was cleaned); stage it again", ref=sha)
-    if sidecar.get("extractor") != analysis.EXTRACTOR or sidecar.get("analysis_params") != policy["analysis"]:
+    stale = sidecar.get("extractor") != analysis.EXTRACTOR or sidecar.get("analysis_params") != policy["analysis"]
+    if policy["duplicates"]["sift"]:
+        from . import features
+
+        stale = stale or not features.npz_path(box, sha).is_file() or (sidecar.get("features") or {}).get("extractor") != features.EXTRACTOR
+    if stale:
         keep = {k: sidecar.get(k) for k in ("name", "license", "source", "origin")}
         sidecar = analyse_into_sidecar(box, policy, sha, sidecar["file"], keep)
     return sidecar
