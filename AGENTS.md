@@ -102,10 +102,10 @@ Tick a box in the same commit as the work. Bold lines are a milestone's exit cri
   - running (subagent); next: fix or record its findings in `261108-SECURITY-REVIEW-M7.md`
 
 ### M8. Skills, docs, smoke
-- [ ] `skills/` (§10): `sticker-box` usage, one skill per `telegram-sticker` tag category including the OCR skill with its JSON shape and examples, `vocab-cleanup`, `gallery-maintenance`
-- [ ] Example policies in `docs/`: meme library (sticker tag rules, no file rules)
-- [ ] `scripts/smoke.sh`: init each preset, stage, commit, search, frames, dupes, clean, against `testdata/generic/` and, when present, `testdata/private/`
-- [ ] Integration notes for consumers: install line, environment variables, how to call it, what to put in a skill
+- [x] `skills/` (§10): `sticker-box` usage, one skill per `telegram-sticker` tag category including the OCR skill with its JSON shape and examples, `vocab-cleanup`, `gallery-maintenance`
+- [x] Example policies in `docs/`: meme library (sticker tag rules, no file rules), capped gallery, day-long buffer, stricter metadata; every command checked
+- [x] `scripts/smoke.sh`: init each preset, stage, commit, search, frames, dupes, clean, against `testdata/generic/` and, when present, `testdata/private/`
+- [x] Integration notes for consumers: install line, environment variables, how to call it, what to put in a skill (`docs/integration.md`)
 - [ ] **A new agent given only the skills and an empty box can bootstrap a sticker box from a corpus pack without help**
 - [ ] Security code review of the whole tool and the skills (§12), plus a scan of the history for third-party content before the repository goes public
 

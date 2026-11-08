@@ -1,0 +1,27 @@
+---
+name: tag-visual
+description: Tag what a sticker shows, its actions, objects, poses and notable details, with the visual category. Use when adding stickers to a box with a visual category.
+---
+
+# Visual
+
+`visual` tags what is in the picture, so someone can find "the one where she is eating" or "the
+one holding a sign". They are the second way to search, after the feeling.
+
+## Tag
+
+- Actions: 吃饭, 睡觉, 鼓掌, 比心, 敬礼, 逃跑
+- Objects that matter: 举牌, 手机, 枕头, 咖啡
+- Poses and gestures: 托腮, 抱头, 叉腰, 趴着
+- Notable details people remember: 流泪, 冒汗, 头上问号
+
+Two to five tags is usual. Reuse the box's existing tags.
+
+## Avoid
+
+- Camera framing (close-up, upper body, from below): it is almost never how people remember a
+  sticker. In earlier testing most "pose" tags a model produced were framing; leave them out.
+- Colours of hair or clothes on monochrome or heavily tinted art; they are guesses there.
+- Repeating the emotion (`emotion` already says 开心) or the text on the image (the `text` field
+  has it).
+- Long phrases; a tag is a word or two.
