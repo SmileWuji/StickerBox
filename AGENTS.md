@@ -20,6 +20,11 @@ from disk alone:
 - A new session starts by reading this file and `git log --oneline | head`, then continues from
   the first unticked box.
 
+## For the owner
+
+Decisions taken while you were away, each with its reason and how to undo it, are in
+`261108-BUILD-DECISIONS.md`. Nothing there is hard to reverse.
+
 ## Checklist
 
 Tick a box in the same commit as the work. Bold lines are a milestone's exit criterion.
@@ -31,16 +36,16 @@ Tick a box in the same commit as the work. Bold lines are a milestone's exit cri
 - [x] Test data layout (§11): `testdata/generic/` committed, `testdata/private/` git-ignored and filled by `scripts/link-private-testdata.sh` from the owner's corpora; private tests skip when it is empty
 - [x] Test helpers: synthetic image factory (static WebP, animated WebP, WebM, GIF, PNG, JPG) in `tests/factory.py`; the temp box fixture lands with `init` in M1
 - [x] `README.md` for humans (install, quick start); this file kept current
-- [ ] **`pip install -e . && sticker-box --help && python3 -m pytest -q` all work on a fresh clone**
+- [x] **`pip install -e . && sticker-box --help && python3 -m pytest -q` all work on a fresh clone**
 
 ### M1. Instance, schema, policy
-- [ ] `init <dir> --preset ... --language ...`: the tree of §3, schema of §5, policy from the preset
-- [ ] Presets `telegram-sticker`, `gallery`, `buffer` (§6); Telegram numbers verified against https://core.telegram.org/stickers and the source recorded in the preset
-- [ ] `info`; `policy show`; `policy set <rule> <json>` validated and logged in `policy_log`
-- [ ] `README.md` in the instance generated from the policy (warning, description, rules in words); `manual` regenerates it
-- [ ] `notes show | set`: free text for the agents using the box, stored in `meta.agent_notes`, rendered as the README's "To agents" section; the tool never interprets it (§6)
-- [ ] Opening a box checks `schema_version` and refuses a newer one
-- [ ] **A box of each preset can be created, inspected, and have a rule changed, and its `README.md` states the change**
+- [x] `init <dir> --preset ... --language ...`: the tree of §3, schema of §5, policy from the preset
+- [x] Presets `telegram-sticker`, `gallery`, `buffer` (§6); Telegram numbers verified against https://core.telegram.org/stickers and the source recorded in the preset
+- [x] `info`; `policy show`; `policy set <rule> <json>` validated and logged in `policy_log`
+- [x] `README.md` in the instance generated from the policy (warning, description, rules in words); `manual` regenerates it
+- [x] `notes show | set`: free text for the agents using the box, stored in `meta.agent_notes`, rendered as the README's "To agents" section; the tool never interprets it (§6)
+- [x] Opening a box checks `schema_version` and refuses a newer one
+- [x] **A box of each preset can be created, inspected, and have a rule changed, and its `README.md` states the change**
 
 ### M2. Media analysis
 - [ ] `media.py`: sniff format, dimensions, animated, frame count, duration, fps, audio, bytes

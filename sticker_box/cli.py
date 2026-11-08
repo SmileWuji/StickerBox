@@ -98,6 +98,10 @@ def main(argv: list[str] | None = None) -> int:
         return err.exit_code
     except KeyboardInterrupt:
         return EXIT_ERROR
+    finally:
+        from . import commands
+
+        commands.close_all()
 
 
 def emit_error(err: BoxError, as_json: bool) -> None:
