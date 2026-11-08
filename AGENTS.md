@@ -48,11 +48,11 @@ Tick a box in the same commit as the work. Bold lines are a milestone's exit cri
 - [x] **A box of each preset can be created, inspected, and have a rule changed, and its `README.md` states the change**
 
 ### M2. Media analysis
-- [ ] `media.py`: sniff format, dimensions, animated, frame count, duration, fps, audio, bytes
-- [ ] pHash and keyframes ported from `../GuidedStickerBootCamp/app/` (`phash.py`, `keyframes.py`, `media.py`), defaults kept (`drop_thr 0.10`, cap 64); BootCamp's numbers reproduced on a corpus subset
-- [ ] RapidOCR hint with the noise gate ported from `../GuidedStickerObservatory/service/noise.py`; on animations, run on keyframes and merge
-- [ ] `frames <ref>`: contact sheet of keyframes, labelled with index and time, written to `temporary/`
-- [ ] **`stage`-less analysis of every file in the corpus finishes without error, and contact sheets of five animations read correctly by eye**
+- [x] `media.py`: sniff format, dimensions, animated, frame count, duration, fps, audio, bytes
+- [x] pHash and keyframes ported from `../GuidedStickerBootCamp/app/` (`phash.py`, `keyframes.py`, `media.py`), defaults kept (`drop_thr 0.10`, cap 64); BootCamp's numbers reproduced on a corpus subset
+- [x] RapidOCR hint with the noise gate ported from `../GuidedStickerObservatory/service/noise.py`; on animations, run on keyframes and merge
+- [x] `frames <ref>`: contact sheet of keyframes, labelled with index and time, written to `temporary/` (or `--out`); `analyze <path>` prints the analysis without a box
+- [x] **`stage`-less analysis of every file in the corpus finishes without error, and contact sheets of five animations read correctly by eye**
 
 ### M3. Stage and commit
 - [ ] `stage <file>...`: copy into `temporary/`, analysis sidecar, file rules reported early, duplicates by sha256 and pHash; no database write

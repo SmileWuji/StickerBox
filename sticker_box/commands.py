@@ -117,6 +117,35 @@ def cmd_notes_set(args) -> dict:
     return {"notes": text}
 
 
+def cmd_analyze(args) -> dict:
+    from . import analysis
+
+    params = policy.DEFAULTS["analysis"]
+    results = []
+    for name in args.paths:
+        path = Path(name)
+        if not path.is_file():
+            raise BoxError("not_found", f"{name} is not a file")
+        results.append({"path": str(path), **analysis.analyze(path, params, with_ocr=args.ocr).summary()})
+    return {"files": results}
+
+
+def cmd_frames(args) -> dict:
+    from . import analysis, contact
+
+    path = Path(args.ref)
+    if not path.is_file():
+        raise BoxError("not_found", f"{args.ref} is not a file")
+    result = analysis.analyze(path, policy.DEFAULTS["analysis"])
+    if args.out:
+        out = Path(args.out)
+    else:
+        out = open_box(args).temporary / f"frames-{result.sha256}.jpg"
+    contact.write(contact.sheet(result.sheet_frames()), out)
+    return {"sheet": str(out.resolve()), "keyframes": len(result.keyframes), "animated": result.info.animated,
+            "duration_ms": result.info.duration_ms}
+
+
 def register(sub: argparse._SubParsersAction, common: argparse.ArgumentParser) -> None:
     def add(name: str, handler, help_text: str, parent=sub):
         p = parent.add_parser(name, parents=[common], help=help_text, description=help_text)
@@ -147,3 +176,11 @@ def register(sub: argparse._SubParsersAction, common: argparse.ArgumentParser) -
     p = add("set", cmd_notes_set, "replace the notes ('' clears them)", gsub)
     p.add_argument("text", nargs="?")
     p.add_argument("--file", help="read the notes from a file")
+
+    p = add("analyze", cmd_analyze, "analyse files without a box: metadata, keyframes, pHash, optional OCR hint")
+    p.add_argument("paths", nargs="+")
+    p.add_argument("--ocr", action="store_true", help="also run the RapidOCR hint")
+
+    p = add("frames", cmd_frames, "contact sheet of an image's keyframes, for reading animations in one image")
+    p.add_argument("ref", help="a file path (or, from M3, a staged or stored reference)")
+    p.add_argument("--out", help="write the sheet here instead of the box's temporary/")

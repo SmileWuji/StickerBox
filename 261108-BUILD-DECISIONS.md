@@ -27,3 +27,17 @@ under "For the owner", continue. Each entry says what to change if the owner dis
    `{"ocr_hint", "keyframe_drop_thr", "max_keyframes", "sift_keyframes"}`.
 6. **Every tag belongs to a category, even in a free vocabulary.** The gallery and buffer presets
    have one category, `tag`, set as the default, so `--tag 无语` works without a category there.
+
+## M2
+
+7. **Matroska files carrying a WebM codec count as WEBM.** One corpus sticker has the DocType
+   `matroska` but VP9 video; it is WebM in all but the label. Matroska with VP8, VP9 or AV1 is
+   accepted and stored as `.webm`; anything else is refused.
+8. **The noise gate drops the Observatory's pack-specific watermark rule** (one third-party
+   handle and its OCR misspellings). Any `@handle` still passes, which covers watermarks in
+   general without naming a pack in an open-source repo.
+9. **Contact sheets are JPEG** (quality 90), cells 256 px up to 16 keyframes and 192 px beyond,
+   at most 8 columns. `analyze <path>` exists as a box-free command so an agent can inspect a
+   file before staging it.
+10. **Frames are worked on at most 1600 px on the long side**, which keeps memory bounded for big
+    gallery images; pHash is unaffected (it shrinks to 32 px anyway).
