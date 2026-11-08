@@ -143,9 +143,9 @@ def plan(conn: sqlite3.Connection, policy: dict, tags: list[str], defines: list[
         row = tag_row(conn, category, value)
         if row is None:
             close = tag_by_norm(conn, category, value)
-            if close is not None and (mode == "free" or (category, value) not in definitions):
+            if close is not None:
                 row = close
-                result.warnings.append(f"{label}: used the existing tag {category}={close['value']}")
+                result.warnings.append(f"{label}: used the existing tag {category}={close['value']}, which differs only in case, width or punctuation")
         if row is not None:
             if row["retired_at"]:
                 result.problems.append({"problem": "retired_tag", "tag": label, "message": f"{label} is retired", "suggestions": suggest(conn, category, value)})
@@ -205,3 +205,181 @@ def create_tags(conn: sqlite3.Connection, specs: list[dict], how: str) -> list[i
 
 def log(conn: sqlite3.Connection, action: str, details: dict) -> None:
     conn.execute("INSERT INTO vocab_log (at, action, details) VALUES (?, ?, ?)", (clock.stamp(), action, json.dumps(details, ensure_ascii=False)))
+
+
+def _category(policy: dict, category: str) -> str:
+    if category not in policy["categories"]:
+        raise BoxError("unknown_category", f"no category {category!r}", categories=list(policy["categories"]))
+    return category
+
+
+def _require(conn: sqlite3.Connection, category: str, value: str) -> sqlite3.Row:
+    row = conn.execute("SELECT * FROM tag WHERE category = ? AND value = ?", (category, value)).fetchone()
+    if row is None:
+        alias = tag_row(conn, category, value)
+        hint = f"; {value!r} is an alias of {alias['value']!r}" if alias else ""
+        raise BoxError("unknown_tag", f"no tag {category}={value}{hint}", suggestions=suggest(conn, category, value))
+    return row
+
+
+def _free(conn: sqlite3.Connection, category: str, value: str, own_id: int | None = None) -> None:
+    taken = tag_row(conn, category, value)
+    if taken is not None and taken["id"] != own_id:
+        raise BoxError("exists", f"{category}={value} is already a tag or an alias of {category}={taken['value']}")
+    close = tag_by_norm(conn, category, value)
+    if close is not None and close["id"] != own_id:
+        raise BoxError("exists", f"{category}={value} differs from {category}={close['value']} only in case, width or punctuation; use that tag or add an alias")
+
+
+def _with_counts(conn: sqlite3.Connection, where: str, params: tuple) -> list[dict]:
+    rows = conn.execute(
+        f"""SELECT t.*, p.value AS parent,
+                  (SELECT COUNT(*) FROM item_tag it WHERE it.tag_id = t.id) AS uses,
+                  (SELECT GROUP_CONCAT(alias, '|') FROM tag_alias a WHERE a.tag_id = t.id) AS aliases
+           FROM tag t LEFT JOIN tag p ON p.id = t.parent_id {where} ORDER BY t.category, uses DESC, t.value""",
+        params,
+    ).fetchall()
+    return [{
+        "tag": f"{r['category']}={r['value']}", "category": r["category"], "value": r["value"], "definition": r["definition"],
+        "aliases": r["aliases"].split("|") if r["aliases"] else [], "parent": r["parent"], "uses": r["uses"],
+        "lang": r["lang"], "retired": bool(r["retired_at"]),
+    } for r in rows]
+
+
+def list_tags(conn: sqlite3.Connection, category: str | None, retired: bool) -> list[dict]:
+    clauses, params = [], []
+    if category:
+        clauses.append("t.category = ?")
+        params.append(category)
+    if not retired:
+        clauses.append("t.retired_at IS NULL")
+    return _with_counts(conn, ("WHERE " + " AND ".join(clauses)) if clauses else "", tuple(params))
+
+
+def new(conn, policy, language, category, value, definition, parent=None, aliases=(), lang=None) -> dict:
+    category = _category(policy, category)
+    value = check_value(value)
+    if not definition or not definition.strip():
+        raise BoxError("missing_definition", "a new tag needs a definition (--means)")
+    if len(definition) > MAX_DEFINITION:
+        raise BoxError("invalid_definition", f"definitions are at most {MAX_DEFINITION} characters")
+    _free(conn, category, value)
+    parent_id = _require(conn, category, parent)["id"] if parent else None
+    cur = conn.execute(
+        "INSERT INTO tag (category, value, definition, parent_id, lang, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+        (category, value, definition.strip(), parent_id, lang, clock.stamp()),
+    )
+    for alias in aliases:
+        add_alias(conn, category, value, alias)
+    log(conn, "create", {"category": category, "value": value, "definition": definition.strip(), "parent": parent, "via": "tag new"})
+    from . import script_check
+
+    warning = None if lang else script_check.mismatch(value, language)
+    return {"tag": f"{category}={value}", "id": cur.lastrowid, "warnings": [warning] if warning else []}
+
+
+def define(conn, category, value, definition) -> dict:
+    row = _require(conn, category, value)
+    if len(definition) > MAX_DEFINITION:
+        raise BoxError("invalid_definition", f"definitions are at most {MAX_DEFINITION} characters")
+    conn.execute("UPDATE tag SET definition = ? WHERE id = ?", (definition.strip() or None, row["id"]))
+    log(conn, "define", {"category": category, "value": value, "old": row["definition"], "new": definition.strip()})
+    return {"tag": f"{category}={value}", "definition": definition.strip()}
+
+
+def add_alias(conn, category, value, alias) -> None:
+    row = _require(conn, category, value)
+    alias = check_value(alias)
+    _free(conn, category, alias)
+    conn.execute("INSERT INTO tag_alias (tag_id, category, alias) VALUES (?, ?, ?)", (row["id"], category, alias))
+    log(conn, "alias", {"category": category, "value": value, "alias": alias})
+
+
+def remove_alias(conn, category, value, alias) -> None:
+    row = _require(conn, category, value)
+    cur = conn.execute("DELETE FROM tag_alias WHERE tag_id = ? AND alias = ?", (row["id"], alias))
+    if cur.rowcount == 0:
+        raise BoxError("not_found", f"{alias!r} is not an alias of {category}={value}")
+    log(conn, "unalias", {"category": category, "value": value, "alias": alias})
+
+
+def rename(conn, category, old, new_value) -> dict:
+    row = _require(conn, category, old)
+    new_value = check_value(new_value)
+    _free(conn, category, new_value, own_id=row["id"])
+    conn.execute("DELETE FROM tag_alias WHERE category = ? AND alias = ?", (category, new_value))
+    conn.execute("UPDATE tag SET value = ? WHERE id = ?", (new_value, row["id"]))
+    conn.execute("INSERT OR IGNORE INTO tag_alias (tag_id, category, alias) VALUES (?, ?, ?)", (row["id"], category, old))
+    log(conn, "rename", {"category": category, "old": old, "new": new_value})
+    return {"tag": f"{category}={new_value}", "alias_kept": old}
+
+
+def merge(conn, category, source, target) -> dict:
+    src, dst = _require(conn, category, source), _require(conn, category, target)
+    if src["id"] == dst["id"]:
+        raise BoxError("invalid", "a tag cannot be merged into itself")
+    moved = conn.execute(
+        "INSERT OR IGNORE INTO item_tag (sha256, tag_id) SELECT sha256, ? FROM item_tag WHERE tag_id = ?", (dst["id"], src["id"])
+    ).rowcount
+    conn.execute("UPDATE tag_alias SET tag_id = ? WHERE tag_id = ?", (dst["id"], src["id"]))
+    conn.execute("UPDATE tag SET parent_id = ? WHERE parent_id = ?", (dst["id"], src["id"]))
+    conn.execute("DELETE FROM tag WHERE id = ?", (src["id"],))
+    conn.execute("INSERT OR IGNORE INTO tag_alias (tag_id, category, alias) VALUES (?, ?, ?)", (dst["id"], category, source))
+    if not dst["definition"] and src["definition"]:
+        conn.execute("UPDATE tag SET definition = ? WHERE id = ?", (src["definition"], dst["id"]))
+    log(conn, "merge", {"category": category, "from": source, "into": target, "items": moved})
+    return {"tag": f"{category}={target}", "merged": f"{category}={source}", "items_retagged": moved, "alias_kept": source}
+
+
+def retire(conn, category, value, restore: bool = False) -> dict:
+    row = _require(conn, category, value)
+    conn.execute("UPDATE tag SET retired_at = ? WHERE id = ?", (None if restore else clock.stamp(), row["id"]))
+    log(conn, "restore" if restore else "retire", {"category": category, "value": value})
+    return {"tag": f"{category}={value}", "retired": not restore}
+
+
+def set_parent(conn, category, value, parent: str | None) -> dict:
+    row = _require(conn, category, value)
+    parent_id = None
+    if parent:
+        parent_row = _require(conn, category, parent)
+        node = parent_row
+        while node is not None:
+            if node["id"] == row["id"]:
+                raise BoxError("cycle", f"{category}={parent} is below {category}={value}; a tag cannot be its own ancestor")
+            node = conn.execute("SELECT * FROM tag WHERE id = ?", (node["parent_id"],)).fetchone() if node["parent_id"] else None
+        parent_id = parent_row["id"]
+    conn.execute("UPDATE tag SET parent_id = ? WHERE id = ?", (parent_id, row["id"]))
+    log(conn, "parent", {"category": category, "value": value, "parent": parent})
+    return {"tag": f"{category}={value}", "parent": parent}
+
+
+def review(conn, policy, category: str | None = None, threshold: float = 0.6) -> dict:
+    """Near-twin tags, undefined tags and unused tags, for a cleanup pass."""
+    tags = list_tags(conn, category, retired=False)
+    pairs = []
+    by_cat: dict[str, list[dict]] = {}
+    for t in tags:
+        by_cat.setdefault(t["category"], []).append(t)
+    for cat, group in by_cat.items():
+        for i, a in enumerate(group):
+            for b in group[i + 1:]:
+                names_a = [a["value"], *a["aliases"]]
+                names_b = [b["value"], *b["aliases"]]
+                score = max(similarity(x, y) for x in names_a for y in names_b)
+                if score >= threshold:
+                    keep, drop = (a, b) if a["uses"] >= b["uses"] else (b, a)
+                    pairs.append({
+                        "category": cat, "score": round(score, 2),
+                        "a": {"value": a["value"], "uses": a["uses"], "definition": a["definition"]},
+                        "b": {"value": b["value"], "uses": b["uses"], "definition": b["definition"]},
+                        "merge_hint": f"sticker-box tag merge {cat} {drop['value']} {keep['value']}",
+                    })
+    pairs.sort(key=lambda p: -p["score"])
+    return {
+        "mode": policy["vocabulary"]["mode"],
+        "tags": len(tags),
+        "similar_pairs": pairs,
+        "undefined": [t["tag"] for t in tags if not t["definition"]],
+        "unused": [t["tag"] for t in tags if t["uses"] == 0],
+    }

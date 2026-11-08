@@ -64,3 +64,17 @@ under "For the owner", continue. Each entry says what to change if the owner dis
     creates the tag and puts it on the item.
 16. **A missing required category is not reported** when a tag in that category was given but
     refused (for example an undefined new tag), to keep the problem list to the real cause.
+
+## M4
+
+17. **Extra tag verbs: `tag parent` (with a cycle check) and `tag retire --restore`.** Parents stay
+    within one category, which gives the multi-layer dictionary (`emotion`: 负面 > 嫌弃).
+    `rename` and `merge` keep the old value as an alias, so old habits still resolve.
+18. **`vocab review` reports three lists:** near-twin pairs (similarity of values and aliases,
+    containment counts high, threshold 0.6, each with a ready `tag merge` command keeping the
+    more used tag), undefined tags, and unused tags. It cannot see synonyms that share no
+    characters (生气 and 愤怒); that is the cleanup agent's job, helped by the definitions.
+19. **`vocab unlock` returns to `open`,** not to the preset's original mode.
+20. **The generated README gained a "Using this box" section** with the real commands and the
+    required tags and fields for `commit`, so a human or an agent arriving cold can act on it.
+    Policy order is now kept as written (fields and categories appear in the preset's order).

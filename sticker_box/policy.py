@@ -233,7 +233,7 @@ def store_all(conn: sqlite3.Connection, policy: dict) -> None:
     for name in RULES:
         conn.execute(
             "INSERT INTO policy_rule (name, params) VALUES (?, ?) ON CONFLICT (name) DO UPDATE SET params = excluded.params",
-            (name, json.dumps(policy[name], ensure_ascii=False, sort_keys=True)),
+            (name, json.dumps(policy[name], ensure_ascii=False)),
         )
 
 

@@ -243,6 +243,92 @@ def cmd_clean(args) -> dict:
     return limits.clean(open_box(args), everything=args.all)
 
 
+def _vocab_write(args, action) -> dict:
+    box = open_box(args)
+    with db.transaction(box.conn):
+        result = action(box)
+    box.write_readme()
+    return result
+
+
+def cmd_tag_list(args) -> dict:
+    from . import vocab
+
+    return {"tags": vocab.list_tags(open_box(args).conn, args.category, args.retired)}
+
+
+def cmd_tag_new(args) -> dict:
+    from . import vocab
+
+    return _vocab_write(args, lambda box: vocab.new(box.conn, box.policy(), box.language, args.category, args.value, args.means,
+                                                    args.parent, args.alias or [], args.lang))
+
+
+def cmd_tag_define(args) -> dict:
+    from . import vocab
+
+    return _vocab_write(args, lambda box: vocab.define(box.conn, args.category, args.value, args.definition))
+
+
+def cmd_tag_alias(args) -> dict:
+    from . import vocab
+
+    def act(box):
+        for alias in args.aliases:
+            (vocab.remove_alias if args.remove else vocab.add_alias)(box.conn, args.category, args.value, alias)
+        return {"tag": f"{args.category}={args.value}", ("removed" if args.remove else "added"): args.aliases}
+
+    return _vocab_write(args, act)
+
+
+def cmd_tag_rename(args) -> dict:
+    from . import vocab
+
+    return _vocab_write(args, lambda box: vocab.rename(box.conn, args.category, args.old, args.new))
+
+
+def cmd_tag_merge(args) -> dict:
+    from . import vocab
+
+    return _vocab_write(args, lambda box: vocab.merge(box.conn, args.category, args.source, args.target))
+
+
+def cmd_tag_retire(args) -> dict:
+    from . import vocab
+
+    return _vocab_write(args, lambda box: vocab.retire(box.conn, args.category, args.value, args.restore))
+
+
+def cmd_tag_parent(args) -> dict:
+    from . import vocab
+
+    return _vocab_write(args, lambda box: vocab.set_parent(box.conn, args.category, args.value, args.parent))
+
+
+def cmd_vocab_review(args) -> dict:
+    from . import vocab
+
+    box = open_box(args)
+    return vocab.review(box.conn, box.policy(), args.category, args.threshold)
+
+
+def _set_mode(args, mode: str) -> dict:
+    box = open_box(args)
+    with db.transaction(box.conn):
+        current = box.policy()["vocabulary"]
+        policy.set_rule(box.conn, "vocabulary", {**current, "mode": mode})
+    box.write_readme()
+    return {"vocabulary": mode, "was": current["mode"]}
+
+
+def cmd_vocab_lock(args) -> dict:
+    return _set_mode(args, "locked")
+
+
+def cmd_vocab_unlock(args) -> dict:
+    return _set_mode(args, "open")
+
+
 def register(sub: argparse._SubParsersAction, common: argparse.ArgumentParser) -> None:
     def add(name: str, handler, help_text: str, parent=sub):
         p = parent.add_parser(name, parents=[common], help=help_text, description=help_text)
@@ -322,3 +408,49 @@ def register(sub: argparse._SubParsersAction, common: argparse.ArgumentParser) -
 
     p = add("clean", cmd_clean, "remove staged files past the grace period and expired items")
     p.add_argument("--all", action="store_true", help="remove every staged file, however recent")
+
+    group = sub.add_parser("tag", help="list and change tags", parents=[common])
+    tsub = group.add_subparsers(dest="action", metavar="<action>", required=True, parser_class=sub._parser_class)
+    p = add("list", cmd_tag_list, "list tags with definitions, aliases and counts", tsub)
+    p.add_argument("--category")
+    p.add_argument("--retired", action="store_true", help="include retired tags")
+    p = add("new", cmd_tag_new, "create a tag (the only way in a locked vocabulary)", tsub)
+    p.add_argument("category")
+    p.add_argument("value")
+    p.add_argument("--means", required=True, metavar="DEFINITION")
+    p.add_argument("--parent", metavar="VALUE", help="a broader tag in the same category")
+    p.add_argument("--alias", action="append", metavar="ALIAS")
+    p.add_argument("--lang", help="language tag, only for a phrase kept in its original language")
+    p = add("define", cmd_tag_define, "set a tag's definition", tsub)
+    p.add_argument("category")
+    p.add_argument("value")
+    p.add_argument("definition")
+    p = add("alias", cmd_tag_alias, "add (or with --remove, drop) aliases of a tag", tsub)
+    p.add_argument("category")
+    p.add_argument("value")
+    p.add_argument("aliases", nargs="+")
+    p.add_argument("--remove", action="store_true")
+    p = add("rename", cmd_tag_rename, "rename a tag; the old value becomes an alias", tsub)
+    p.add_argument("category")
+    p.add_argument("old")
+    p.add_argument("new")
+    p = add("merge", cmd_tag_merge, "move every item from one tag to another; the first becomes an alias", tsub)
+    p.add_argument("category")
+    p.add_argument("source", metavar="FROM")
+    p.add_argument("target", metavar="INTO")
+    p = add("retire", cmd_tag_retire, "stop a tag from being used on new items (or --restore it)", tsub)
+    p.add_argument("category")
+    p.add_argument("value")
+    p.add_argument("--restore", action="store_true")
+    p = add("parent", cmd_tag_parent, "set a tag's broader tag, or clear it", tsub)
+    p.add_argument("category")
+    p.add_argument("value")
+    p.add_argument("parent", nargs="?")
+
+    group = sub.add_parser("vocab", help="review and lock the vocabulary", parents=[common])
+    vsub = group.add_subparsers(dest="action", metavar="<action>", required=True, parser_class=sub._parser_class)
+    p = add("review", cmd_vocab_review, "near-twin, undefined and unused tags, for a cleanup pass", vsub)
+    p.add_argument("--category")
+    p.add_argument("--threshold", type=float, default=0.6, help="similarity from 0 to 1 (default 0.6)")
+    add("lock", cmd_vocab_lock, "lock the vocabulary: new tags only through `tag new`", vsub)
+    add("unlock", cmd_vocab_unlock, "reopen the vocabulary", vsub)

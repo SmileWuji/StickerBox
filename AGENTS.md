@@ -64,14 +64,14 @@ Tick a box in the same commit as the work. Bold lines are a milestone's exit cri
 - [x] **Twenty corpus stickers staged and committed into a `telegram-sticker` box with tags; a recompressed copy of one is reported as a duplicate; a non-compliant file is refused with every reason**
 
 ### M4. Vocabulary
-- [ ] `tag list | new | define | alias | rename | merge | retire`, each logged in `vocab_log`
-- [ ] Modes `free`, `open`, `locked` (§7): inline creation at `commit` in `open`, only `tag new` in `locked`, anything in `free`
-- [ ] Unknown tag errors carry the nearest existing tags (exact, alias, substring, character-bigram similarity)
-- [ ] Category cardinality (`one`, `at_least_one`, `any`) and required categories enforced
-- [ ] Script check of new tags against the instance language, as a warning
-- [ ] `vocab review`: near-duplicate tag pairs with counts, for a cleanup pass; `vocab lock`, `vocab unlock`
-- [ ] Generated `README.md` gains the vocabulary: categories, tags, definitions, aliases, parents, counts
-- [ ] **Bootstrapping a vocabulary from 50 stickers, merging the duplicates `vocab review` finds, and locking it works end to end, and `README.md` reads as a usable manual**
+- [x] `tag list | new | define | alias | rename | merge | retire`, each logged in `vocab_log`
+- [x] Modes `free`, `open`, `locked` (§7): inline creation at `commit` in `open`, only `tag new` in `locked`, anything in `free`
+- [x] Unknown tag errors carry the nearest existing tags (exact, alias, substring, character-bigram similarity)
+- [x] Category cardinality (`one`, `at_least_one`, `any`) and required categories enforced
+- [x] Script check of new tags against the instance language, as a warning
+- [x] `vocab review`: near-duplicate tag pairs with counts, for a cleanup pass; `vocab lock`, `vocab unlock`
+- [x] Generated `README.md` gains the vocabulary: categories, tags, definitions, aliases, parents, counts
+- [x] **Bootstrapping a vocabulary from 50 stickers, merging the duplicates `vocab review` finds, and locking it works end to end, and `README.md` reads as a usable manual**
 
 ### M5. Search
 - [ ] `search <query>`: terms split on space and `|`; matches tag values and aliases, OCR text, description, note; `LIKE` for short Chinese terms

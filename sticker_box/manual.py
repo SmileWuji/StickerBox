@@ -60,6 +60,17 @@ def _vocabulary(conn, rules: dict) -> list[str]:
     return out
 
 
+def _commit_hint(rules: dict) -> str:
+    parts = []
+    for name, spec in rules["categories"].items():
+        if spec["required"]:
+            parts.append(f"--tag {name}=<value>")
+    for name, spec in rules["fields"].items():
+        if spec["required"]:
+            parts.append(f"--{name} <{name}>" if name in ("license", "source", "text", "description", "note") else f"--field {name}=<value>")
+    return " ".join(parts) or "[--tag <value>]"
+
+
 def render(box) -> str:
     conn = box.conn
     rules = policy_mod.load(conn)
@@ -81,6 +92,13 @@ def render(box) -> str:
         "Description (written by whoever created the box):",
         "",
         quote(box.meta("description", "")),
+        "",
+        "## Using this box",
+        "",
+        "- Find images: `sticker-box search <words>` (several words separated by spaces or `|` match any of them).",
+        "- Read an animation in one picture: `sticker-box frames <ref>` writes a contact sheet of its keyframes.",
+        f"- Add an image: `sticker-box stage <file>`, look at what it reports, then `sticker-box commit <ref> {_commit_hint(rules)}`.",
+        "- Change or remove one: `sticker-box edit <ref> ...`, `sticker-box remove <ref>`. Every command has `--help`; add `--json` for machine-readable output.",
         "",
         "## Rules",
         "",

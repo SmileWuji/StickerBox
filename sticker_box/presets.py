@@ -14,11 +14,11 @@ PRESETS = {
         "description": "Telegram-style stickers: static WEBP or PNG, and VP9 WEBM video, one side exactly 512 px. Convert files before adding them; the box only checks.",
         "policy": {
             "fields": {
-                "license": {"required": True, "description": "Licence of the image; 'unknown' when it cannot be found out."},
-                "source": {"description": "Where the image came from, such as a pack link."},
                 "text": {"required": True, "allow_empty": True, "description": "Every piece of text on the image, verbatim, watermarks included; empty when there is none."},
-                "description": {"description": "What the image shows."},
                 "note": {"required": True, "description": "When to send it."},
+                "license": {"required": True, "description": "Licence of the image; 'unknown' when it cannot be found out."},
+                "description": {"description": "What the image shows."},
+                "source": {"description": "Where the image came from, such as a pack link."},
             },
             "categories": {
                 "emotion": {"description": "The feeling or reaction the sticker expresses.", "multiple": True, "required": True},
@@ -30,8 +30,8 @@ PRESETS = {
             "files": {
                 "formats": {
                     "webp": copy.deepcopy(_STATIC_512),
-                    "png": copy.deepcopy(_STATIC_512),
                     "webm": {"codecs": ["vp9"], "audio": False, "one_side": 512, "max_side": 512, "max_bytes": 256 * 1024, "max_duration_ms": 3000, "max_fps": 30},
+                    "png": copy.deepcopy(_STATIC_512),
                 },
                 "all": {},
             },

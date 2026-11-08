@@ -39,7 +39,7 @@ def test_stage_reports_early_and_writes_no_row(box, run_cli):
     root = box()
     ok, bad = stage(run_cli, root, GENERIC / "sticker-static.webp", GENERIC / "oversize.png")
     assert ok["status"] == "staged" and ok["file_problems"] == []
-    assert ok["requires"] == {"fields": ["license", "note", "text"], "categories": ["emotion"], "vocabulary": "open"}
+    assert ok["requires"] == {"fields": ["text", "note", "license"], "categories": ["emotion"], "vocabulary": "open"}
     assert ok["ocr_hint"]["engine"] == "rapidocr"
     assert {p["rule"] for p in bad["file_problems"]} == {"png.one_side", "png.max_side"}
     assert rows(root, "SELECT COUNT(*) FROM item") == [(0,)]
