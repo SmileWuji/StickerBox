@@ -443,7 +443,7 @@ def register(sub: argparse._SubParsersAction, common: argparse.ArgumentParser) -
 
     group = sub.add_parser("tag", help="list and change tags", parents=[common])
     tsub = group.add_subparsers(dest="action", metavar="<action>", required=True, parser_class=sub._parser_class)
-    p = add("list", cmd_tag_list, "list tags with definitions, aliases and counts", tsub)
+    p = add("list", cmd_tag_list, "list tags with definitions, aliases and uses (images per tag)", tsub)
     p.add_argument("--category")
     p.add_argument("--retired", action="store_true", help="include retired tags")
     p = add("new", cmd_tag_new, "create a tag (the only way in a locked vocabulary)", tsub)
@@ -487,8 +487,8 @@ def register(sub: argparse._SubParsersAction, common: argparse.ArgumentParser) -
     add("lock", cmd_vocab_lock, "lock the vocabulary: new tags only through `tag new`", vsub)
     add("unlock", cmd_vocab_unlock, "reopen the vocabulary", vsub)
 
-    p = add("search", cmd_search, "find items by tags, aliases, on-image text, descriptions and notes")
-    p.add_argument("query", nargs="*", help="words; any of them may match (category=value matches one tag)")
+    p = add("search", cmd_search, "find items by tags, aliases, tag definitions, on-image text, notes and descriptions")
+    p.add_argument("query", nargs="*", help="words, matched literally; any of them may match (category=value matches one tag); with no words, newest first")
     p.add_argument("--tag", action="append", metavar="CATEGORY=VALUE", help="only items with this tag")
     p.add_argument("--category", help="only items with a tag in this category")
     kind = p.add_mutually_exclusive_group()

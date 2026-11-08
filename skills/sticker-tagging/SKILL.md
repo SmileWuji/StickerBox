@@ -15,9 +15,9 @@ The `sticker-box` skill covers the commands. This skill covers what to write.
 3. Look at the image. For an animation, look at `sticker-box frames <ref> --json` instead.
 4. Fill each part with its skill: the text on the image (`tag-text`), the feeling
    (`tag-emotion`), who and from what (`tag-character-series`), what is shown (`tag-visual`).
-5. Write the `note`: one sentence on when you would send it, in the box's language. This is what
-   a later search for a reply will hit, so name the situation: "when someone asks a question
-   that answers itself", not "funny".
+5. Write the `note`: one sentence on when you would send it, in the box's language. Search
+   matches words literally, so name the situation with the words people would actually type or
+   say in it, and a synonym or two: "有人明知故问、问废话、答案显而易见的时候", not "好笑".
 6. `sticker-box commit <ref> ... --json`. Fix every reported problem and commit again.
 
 ## Vocabulary
@@ -33,17 +33,24 @@ same idea always gets the same tag.
 - In a locked vocabulary, new tags need `sticker-box tag new` and should be rare.
 - Text on the image stays in its original language. A meme phrase that only exists in another
   language may stay in it (`tag new ... --lang ja`).
+- Proper names keep the script they are known by (a pack or character known only by a Latin
+  name keeps it). The tool's "written in latin script" warning is then expected; it is a
+  warning, not a refusal.
+- An alias works anywhere a tag does; the answer says which tag it resolved to.
+- The order you give tags in does not matter; the tool stores them as a set.
 
 ## Reference sources
 
-Use only a few sources, in a fixed order, and write the box's choice into its notes when you
-bootstrap it (`sticker-box notes set --stdin`), so every agent uses the same ones:
+Use only a few sources, in a fixed order. If the box's notes already name them, follow the
+notes. If they do not (a new box), you choose, using the defaults below unless you have a reason,
+and write the choice into the notes in the box's language (`sticker-box notes set --stdin`), so
+every later agent uses the same ones:
 
 - Names of works and characters: [bangumi-data](https://github.com/bangumi-data/bangumi-data)
   first for anime, games and related subculture (it has no memes), then Wikipedia, then IMDb
   for live action.
 - Example images, when you are unsure what something looks like (not reverse image search):
-  Safebooru, Giphy, Pinterest, in the order the box's notes give.
+  Safebooru, then Giphy, then Pinterest.
 
 ## Licence and source
 

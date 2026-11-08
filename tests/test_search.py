@@ -106,3 +106,10 @@ def test_unknown_filter_tag_suggests(tagged):
 
 def test_like_wildcards_are_literal(tagged):
     assert top(tagged, "%") == [] and top(tagged, "_") == []
+
+
+def test_empty_text_stays_empty_and_definitions_are_searched(tagged):
+    root, refs, cli = tagged
+    results = {r["ref"]: r for r in cli("search", "--box", str(root), "--limit", "20")["results"]}
+    assert results[refs[1]]["text"] == ""
+    assert 3 in top(tagged, "鄙视") and 1 in top(tagged, "说不出话")

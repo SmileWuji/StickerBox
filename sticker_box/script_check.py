@@ -39,8 +39,12 @@ def expected(language: str) -> set[str]:
 
 
 def mismatch(text: str, language: str) -> str | None:
-    stray = scripts_in(text) - expected(language)
-    if not stray:
+    """A warning when none of the text is in the box language's script. Mixed names such as
+    "Moka酱" pass; an all-Latin tag in a Chinese box is flagged, as a warning only."""
+    found = scripts_in(text)
+    allowed = expected(language)
+    stray = found - allowed
+    if not stray or found & allowed:
         return None
     return (f"written in {', '.join(sorted(stray))} script, but the box language is {language}; keep tags in one "
             "language unless the phrase only exists in its original language")

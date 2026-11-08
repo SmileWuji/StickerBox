@@ -24,6 +24,9 @@ empty, so that "no text" is a decision, not an omission.
 
 - Exactly what is written, in its original language and script. Do not translate, correct,
   complete or summarise. Keep `……`, `！？`, emoji drawn as text, and repeated characters.
+- Punctuation as drawn. When hand lettering makes width unclear, use full-width marks in Chinese
+  and Japanese text (`！`, `？`, `～`, `……`) and half-width in Latin text.
+- Line breaks become one space; add no other spaces (none after a comma unless one is drawn).
 - All text, in reading order (top to bottom, left to right; right to left for vertical
   Japanese), separated by single spaces.
 - Watermarks and handles (`@somechannel`) are text: include them. They are attribution.
@@ -36,7 +39,9 @@ empty, so that "no text" is a decision, not an omission.
 
 `stage` reports `ocr_hint`: what a small OCR engine found. It is often wrong (wrong characters,
 missing lines, text invented from patterns) and it never sees stylised lettering. Use it only to
-double-check what you read yourself; never copy it without looking.
+double-check what you read yourself; never copy it without looking. `noise: true` means the hint
+looked like stray marks (a lone letter, digits, a short Latin fragment) rather than words; it
+says nothing about whether the image really has text.
 
 ## Examples
 

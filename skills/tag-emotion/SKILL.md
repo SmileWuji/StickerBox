@@ -12,8 +12,8 @@ the main way a sticker gets found mid-conversation, so tag the reaction, not the
 
 - Look at the face, the pose and the text together. Text often decides it: a smiling face
   captioned "谢谢你啊" after a mishap is sarcasm, not happiness.
-- One to three tags. The main reaction first; add a second only when it is also clearly there
-  (embarrassed and happy; angry and helpless).
+- One to three tags. Add a second only when it is also clearly there (embarrassed and happy;
+  angry and helpless). Order does not matter.
 - Prefer the words people would type when looking for a reply: 无语, 嫌弃, 委屈, 得意, 震惊,
   开心, 生气, 害羞, 卖萌, 疑惑, 摆烂, 求饶. Reuse what the box already has.
 - Broader and narrower feelings can be linked with `tag parent` (负面 > 嫌弃) during cleanup;

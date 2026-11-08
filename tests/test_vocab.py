@@ -128,3 +128,22 @@ def test_readme_lists_the_vocabulary(sbox, run_cli, tmp_path):
     add_sticker(run_cli, sbox, tmp_path, 1, "--define", "emotion=无语", "说不出话 | 有竖线")
     readme = (sbox / "README.md").read_text()
     assert "| 无语 | 说不出话 \\| 有竖线 |  |  | 1 |" in readme
+
+
+def test_mixed_script_names_pass_the_script_check():
+    assert script_check.mismatch("Moka酱", "zh-Hans") is None
+    assert script_check.mismatch("MokaPackX", "zh-Hans") is not None
+
+
+def test_alias_use_is_reported(sbox, run_cli, tmp_path):
+    run_cli("tag", "new", "emotion", "无语", "--means", "说不出话", "--alias", "无言", "--box", str(sbox))
+    out = add_sticker(run_cli, sbox, tmp_path, 1, "--tag", "emotion=无言")
+    assert any("alias" in w for w in out["warnings"])
+
+
+def test_merge_reports_items_that_already_had_the_target(sbox, run_cli, tmp_path):
+    box = ["--box", str(sbox)]
+    run_cli("tag", "new", "emotion", "傲娇", "--means", "嘴硬心软", *box)
+    add_sticker(run_cli, sbox, tmp_path, 1, "--define", "emotion=理直气壮", "理不直气也壮", "--tag", "emotion=傲娇")
+    out = run_cli("tag", "merge", "emotion", "傲娇", "理直气壮", *box)
+    assert out["items_retagged"] == 0 and out["items_already_tagged"] == 1 and "1 item(s) lost" in out["message"]

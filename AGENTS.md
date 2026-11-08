@@ -106,7 +106,7 @@ Tick a box in the same commit as the work. Bold lines are a milestone's exit cri
 - [x] Example policies in `docs/`: meme library (sticker tag rules, no file rules), capped gallery, day-long buffer, stricter metadata; every command checked
 - [x] `scripts/smoke.sh`: init each preset, stage, commit, search, frames, dupes, clean, against `testdata/generic/` and, when present, `testdata/private/`
 - [x] Integration notes for consumers: install line, environment variables, how to call it, what to put in a skill (`docs/integration.md`)
-- [ ] **A new agent given only the skills and an empty box can bootstrap a sticker box from a corpus pack without help**
+- [x] **A new agent given only the skills and an empty box can bootstrap a sticker box from a corpus pack without help** (`261108-ACCEPTANCE-M8.md`; friction fixed)
 - [ ] Security code review of the whole tool and the skills (§12), plus a scan of the history for third-party content before the repository goes public
 
 ## 1. Scope

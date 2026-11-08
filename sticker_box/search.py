@@ -6,8 +6,8 @@ trigram index could not."""
 from . import clock, vocab
 from .errors import BoxError
 
-TAG_EXACT, TAG_ALIAS, TAG_PART, TAG_CHILD = 10, 8, 5, 4
-TEXT, DESCRIPTION, NOTE, FIELD = 3, 2, 2, 1
+TAG_EXACT, TAG_ALIAS, TAG_PART, TAG_CHILD, TAG_DEFINITION = 10, 8, 5, 4, 3
+TEXT, NOTE, DESCRIPTION, FIELD = 6, 4, 2, 1
 SNIPPET = 160
 MAX_TERMS = 16
 MAX_TERM = 64
@@ -55,6 +55,10 @@ def _tag_scores(conn, term: str) -> dict[int, tuple[int, str]]:
     for r in tags:
         if r["parent_id"]:
             children.setdefault(r["parent_id"], []).append(r["id"])
+    if not only_category:
+        for r in conn.execute("SELECT id, definition FROM tag WHERE definition IS NOT NULL"):
+            if t in vocab.norm(r["definition"]):
+                give(r["id"], TAG_DEFINITION, f"{names[r['id']]} (definition)")
     roots = [tid for tid, (score, _) in scores.items() if score >= TAG_ALIAS]
     while roots:
         parent = roots.pop()
@@ -83,7 +87,7 @@ def _term_hits(conn, term: str) -> dict[str, tuple[int, str]]:
     if "=" in term:
         return hits
     pattern = _like(term)
-    for column, score in (("text", TEXT), ("description", DESCRIPTION), ("note", NOTE), ("source", FIELD)):
+    for column, score in (("text", TEXT), ("note", NOTE), ("description", DESCRIPTION), ("source", FIELD)):
         for r in conn.execute(f"SELECT sha256 FROM item WHERE {column} LIKE ? ESCAPE '\\'", (pattern,)):
             give(r["sha256"], score, column)
     for r in conn.execute("SELECT DISTINCT sha256 FROM item_field WHERE value LIKE ? ESCAPE '\\'", (pattern,)):
@@ -148,7 +152,7 @@ def search(box, query: str, tags: list[str] = (), category: str | None = None, a
             "animated": bool(row["animated"]),
             "tags": [f"{t['category']}={t['value']}" for t in tag_rows],
             "note": row["note"],
-            "text": (row["text"] or "")[:SNIPPET] or None,
+            "text": None if row["text"] is None else row["text"][:SNIPPET],
             "description": (row["description"] or "")[:SNIPPET] or None,
             "expired": bool(row["expires_at"]) and row["expires_at"] <= now,
         })

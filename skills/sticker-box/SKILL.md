@@ -31,8 +31,11 @@ sticker-box search --tag emotion=开心 --json   only images with that tag
 sticker-box show <ref> --json                  everything about one image
 ```
 
-Each result has `file` (an absolute path you can send), `tags`, `note` (when to use it) and
-`matched` (why it was found). A `<ref>` is the image's sha256, or its first 8 or more characters.
+Search matches the words you give literally, in tags, aliases, tag definitions, the text on
+the image, notes and descriptions; it does not understand meaning. Give several words at once,
+including synonyms and the words people would actually say (`明知故问 废话 显而易见`). Each
+result has `file` (an absolute path you can send), `tags`, `note` (when to use it) and
+`matched` (why it was found). With no words, results are the newest first. A `<ref>` is the image's sha256, or its first 8 or more characters.
 An `expired` image is still there until the next `clean`.
 
 ## Look at an animation

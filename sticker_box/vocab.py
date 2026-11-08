@@ -145,12 +145,15 @@ def plan(conn: sqlite3.Connection, policy: dict, tags: list[str], defines: list[
             result.problems.append({"problem": "unknown_category", "tag": label, "message": f"no category {category!r}", "categories": list(categories)})
             continue
         row = tag_row(conn, category, value)
+        via_alias = row is not None and row["value"] != value
         if row is None:
             close = tag_by_norm(conn, category, value)
             if close is not None:
                 row = close
                 result.warnings.append(f"{label}: used the existing tag {category}={close['value']}, which differs only in case, width or punctuation")
         if row is not None:
+            if via_alias:
+                result.warnings.append(f"{label} is an alias; used {category}={row['value']}")
             if row["retired_at"]:
                 result.problems.append({"problem": "retired_tag", "tag": label, "message": f"{label} is retired", "suggestions": suggest(conn, category, value)})
                 continue
@@ -322,6 +325,7 @@ def merge(conn, category, source, target) -> dict:
     src, dst = _require(conn, category, source), _require(conn, category, target)
     if src["id"] == dst["id"]:
         raise BoxError("invalid", "a tag cannot be merged into itself")
+    had = conn.execute("SELECT COUNT(*) AS n FROM item_tag WHERE tag_id = ?", (src["id"],)).fetchone()["n"]
     moved = conn.execute(
         "INSERT OR IGNORE INTO item_tag (sha256, tag_id) SELECT sha256, ? FROM item_tag WHERE tag_id = ?", (dst["id"], src["id"])
     ).rowcount
@@ -332,7 +336,9 @@ def merge(conn, category, source, target) -> dict:
     if not dst["definition"] and src["definition"]:
         conn.execute("UPDATE tag SET definition = ? WHERE id = ?", (src["definition"], dst["id"]))
     log(conn, "merge", {"category": category, "from": source, "into": target, "items": moved})
-    return {"tag": f"{category}={target}", "merged": f"{category}={source}", "items_retagged": moved, "alias_kept": source}
+    return {"tag": f"{category}={target}", "merged": f"{category}={source}", "items_retagged": moved,
+            "items_already_tagged": had - moved, "alias_kept": source,
+            "message": f"{had} item(s) lost {category}={source}; {moved} gained {category}={target}, {had - moved} already had it"}
 
 
 def retire(conn, category, value, restore: bool = False) -> dict:
