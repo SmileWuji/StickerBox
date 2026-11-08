@@ -1,5 +1,6 @@
 """Analyses every image in the private corpora and prints numbers only (no image content), for
-the M2 exit check and for comparing keyframe counts with GuidedStickerBootCamp's corpus note."""
+the M2 exit check. Folder names listed in testdata/private/bootcamp-subset.txt (git-ignored) are
+summed separately, to compare keyframe counts with GuidedStickerBootCamp's corpus note."""
 
 import statistics
 import sys
@@ -15,7 +16,7 @@ from sticker_box import analysis  # noqa: E402
 from sticker_box.errors import BoxError  # noqa: E402
 
 SUFFIXES = {".webp", ".webm", ".png", ".jpg", ".jpeg", ".gif"}
-BOOTCAMP_PACKS = {"pack_one", "pack_two", "pack_three"}
+SUBSET_LIST = ROOT / "testdata" / "private" / "bootcamp-subset.txt"
 
 
 def main() -> None:
@@ -24,6 +25,7 @@ def main() -> None:
     by_format, errors, walls = defaultdict(int), defaultdict(int), defaultdict(list)
     bootcamp = {"files": 0, "frames": 0, "keyframes": 0, "at_cap": 0}
     per_anim = []
+    subset = set(SUBSET_LIST.read_text().split()) if SUBSET_LIST.is_file() else set()
     start = time.time()
     for path in files:
         t0 = time.time()
@@ -38,7 +40,7 @@ def main() -> None:
         walls[kind].append((time.time() - t0) * 1000)
         if info.animated:
             per_anim.append(len(result.keyframes))
-        if info.format == "webm" and path.parent.name in BOOTCAMP_PACKS:
+        if info.format == "webm" and path.parent.name in subset:
             bootcamp["files"] += 1
             bootcamp["frames"] += info.frames
             bootcamp["keyframes"] += len(result.keyframes)
