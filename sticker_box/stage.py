@@ -100,11 +100,27 @@ def report(box, policy: dict, sidecar: dict, status: str) -> dict:
     }
 
 
-def stage_file(box, path: Path, license: str | None = None, source: str | None = None) -> dict:
-    if not path.is_file():
-        raise BoxError("not_found", f"{path} is not a file")
+MAX_TEMPORARY_BYTES = int(os.environ.get("STICKER_BOX_MAX_TEMPORARY_MB", "1024")) * 1024 * 1024
+
+
+def _temporary_room(box, adding: int) -> None:
+    used = sum(p.stat().st_size for p in box.temporary.iterdir() if p.is_file())
+    if used + adding > MAX_TEMPORARY_BYTES:
+        from .errors import EXIT_LIMIT
+
+        raise BoxError("temporary_full", f"temporary/ holds {used} bytes and the limit is {MAX_TEMPORARY_BYTES}; run `sticker-box clean`",
+                       exit_code=EXIT_LIMIT, used=used, limit=MAX_TEMPORARY_BYTES)
+
+
+def stage_file(box, path: Path, license: str | None = None, source: str | None = None, auto_cleanup: bool = False) -> dict:
+    """Never deletes stored items. Over a box limit it fails (exit 3) unless auto_cleanup, in
+    which case it stages and lists what `commit --auto-cleanup` would remove."""
+    from . import limits
+
     fmt = media.detect(path)
     policy = box.policy()
+    size = path.stat().st_size
+    _temporary_room(box, size)
     tmp = box.temporary / f".incoming-{uuid.uuid4().hex}.part"
     try:
         shutil.copyfile(path, tmp)
@@ -112,6 +128,7 @@ def stage_file(box, path: Path, license: str | None = None, source: str | None =
         stored = box.conn.execute("SELECT file FROM item WHERE sha256 = ?", (sha,)).fetchone()
         if stored:
             return {"status": "already_stored", "ref": sha, "name": path.name, "file": str(box.root / stored["file"])}
+        planned = limits.plan_room(box, policy, size, 1, auto_cleanup)
         file_name = f"{sha}.{media.EXTENSIONS[fmt]}"
         existing = sidecar_path(box, sha)
         if existing.is_file() and (box.temporary / file_name).is_file():
@@ -125,16 +142,17 @@ def stage_file(box, path: Path, license: str | None = None, source: str | None =
                 sidecar = analyse_into_sidecar(box, policy, sha, file_name, {k: sidecar.get(k) for k in ("name", "license", "source", "origin")})
             elif changed:
                 write_sidecar(box, sidecar)
-            return report(box, policy, sidecar, "already_staged")
+            return {**report(box, policy, sidecar, "already_staged"), "commit_would_remove": planned or None}
         os.replace(tmp, box.temporary / file_name)
     finally:
         tmp.unlink(missing_ok=True)
     try:
         sidecar = analyse_into_sidecar(box, policy, sha, file_name, {"name": path.name, "license": license, "source": source, "origin": None})
-    except BoxError:
-        (box.temporary / file_name).unlink(missing_ok=True)
+    except BaseException:
+        for leftover in box.temporary.glob(f"{sha}.*"):
+            leftover.unlink(missing_ok=True)
         raise
-    return report(box, policy, sidecar, "staged")
+    return {**report(box, policy, sidecar, "staged"), "commit_would_remove": planned or None}
 
 
 def ensure_fresh(box, policy: dict, sha: str) -> dict:

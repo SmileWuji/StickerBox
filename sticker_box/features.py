@@ -6,6 +6,7 @@ pictures relate. The ratio test is kept out of the vote: with two stored copies 
 best and second-best would tie and every match would be thrown away."""
 
 import math
+import uuid
 from pathlib import Path
 
 import cv2
@@ -15,7 +16,8 @@ EXTRACTOR = "sift-v1"
 SIFT_SIDE = 1024
 MIN_KEYPOINTS = 30
 VOTE_DISTANCE = 300.0
-BATCH_ROWS = 200
+BATCH_DESCRIPTORS = 60_000
+QUERY_CHUNK = 256
 SHORTLIST = 3
 SAME = 0.85
 ROTATION_DEG = 8.0
@@ -67,7 +69,7 @@ def save(path: Path, sets: list) -> None:
         arrays[f"idx{i}"] = np.array([idx])
         arrays[f"kp{i}"] = kp
         arrays[f"desc{i}"] = desc
-    tmp = path.with_name(path.name + ".tmp.npz")
+    tmp = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp.npz")
     np.savez(tmp, n=np.array([len(sets)]), **arrays)
     tmp.replace(path)
 
@@ -78,18 +80,19 @@ def load(path: Path) -> list:
 
 
 def _stored_batches(conn, exclude: str | None):
-    last = 0
-    while True:
-        rows = conn.execute(
-            "SELECT rowid, sha256, frame, n, desc FROM feature WHERE extractor = ? AND rowid > ? ORDER BY rowid LIMIT ?",
-            (EXTRACTOR, last, BATCH_ROWS),
-        ).fetchall()
-        if not rows:
-            return
-        last = rows[-1]["rowid"]
-        rows = [r for r in rows if r["sha256"] != exclude]
-        if rows:
-            yield rows
+    """Rows of stored features, about BATCH_DESCRIPTORS descriptors at a time, so the distance
+    matrix stays near QUERY_CHUNK x BATCH_DESCRIPTORS floats whatever the keypoint setting."""
+    batch, count = [], 0
+    for r in conn.execute("SELECT sha256, frame, n, desc FROM feature WHERE extractor = ? ORDER BY rowid", (EXTRACTOR,)):
+        if r["sha256"] == exclude:
+            continue
+        batch.append(r)
+        count += r["n"]
+        if count >= BATCH_DESCRIPTORS:
+            yield batch
+            batch, count = [], 0
+    if batch:
+        yield batch
 
 
 def vote(conn, sets: list, exclude: str | None = None) -> dict[str, int]:
@@ -102,12 +105,13 @@ def vote(conn, sets: list, exclude: str | None = None) -> dict[str, int]:
         owners = np.repeat(np.arange(len(rows)), [d.shape[0] for d in descs])
         s_norms = (stack * stack).sum(1)[None, :]
         for q, qn in zip(queries, q_norms):
-            d2 = qn + s_norms - 2.0 * (q @ stack.T)
-            best = d2.argmin(1)
-            ok = d2[np.arange(len(best)), best] <= VOTE_DISTANCE ** 2
-            for owner in owners[best[ok]]:
-                sha = rows[owner]["sha256"]
-                votes[sha] = votes.get(sha, 0) + 1
+            for start in range(0, len(q), QUERY_CHUNK):
+                d2 = qn[start:start + QUERY_CHUNK] + s_norms - 2.0 * (q[start:start + QUERY_CHUNK] @ stack.T)
+                best = d2.argmin(1)
+                ok = d2[np.arange(len(best)), best] <= VOTE_DISTANCE ** 2
+                for owner in owners[best[ok]]:
+                    sha = rows[owner]["sha256"]
+                    votes[sha] = votes.get(sha, 0) + 1
     return votes
 
 

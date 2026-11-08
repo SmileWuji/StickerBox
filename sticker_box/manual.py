@@ -13,13 +13,16 @@ WARNING = (
 
 
 def cell(text) -> str:
+    """One line of agent-written text, safe inside a table cell or a list item."""
     if text is None:
         return ""
-    return " ".join(str(text).split()).replace("|", "\\|")
+    flat = " ".join(str(text).split())
+    return flat.replace("\\", "\\\\").replace("|", "\\|").replace("<", "&lt;").replace(">", "&gt;").replace("`", "'")
 
 
 def quote(text: str) -> str:
-    lines = (text or "").strip().splitlines() or [""]
+    """Agent-written prose as a blockquote; HTML is neutralised so nothing renders outside it."""
+    lines = (text or "").strip().replace("<", "&lt;").replace(">", "&gt;").splitlines() or [""]
     return "\n".join("> " + line if line.strip() else ">" for line in lines)
 
 

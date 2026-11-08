@@ -13,6 +13,7 @@ from .errors import BoxError
 
 MAX_VALUE = 64
 MAX_DEFINITION = 500
+MAX_TAGS_PER_CHANGE = 64
 _STRIP = re.compile(r"[\s\W_]+", re.UNICODE)
 
 
@@ -111,6 +112,9 @@ def plan(conn: sqlite3.Connection, policy: dict, tags: list[str], defines: list[
     from . import script_check
 
     result = Plan()
+    if len(tags) + len(defines) > MAX_TAGS_PER_CHANGE:
+        result.problems.append({"problem": "too_many_tags", "message": f"at most {MAX_TAGS_PER_CHANGE} tags per command"})
+        return result
     mode = policy["vocabulary"]["mode"]
     categories = policy["categories"]
     definitions: dict[tuple[str, str], str] = {}
@@ -354,6 +358,26 @@ def set_parent(conn, category, value, parent: str | None) -> dict:
     return {"tag": f"{category}={value}", "parent": parent}
 
 
+def _candidate_pairs(group: list[dict]) -> list[tuple[int, int]]:
+    """Pairs of tags that share a character or a bigram in their values or aliases; only these
+    can score high, so review stays far below quadratic. Very common keys are skipped."""
+    index: dict[str, set[int]] = {}
+    for i, t in enumerate(group):
+        for name in (t["value"], *t["aliases"]):
+            n = norm(name)
+            for gram in set(n) | _bigrams(n):
+                index.setdefault(gram, set()).add(i)
+    pairs = set()
+    for members in index.values():
+        if len(members) > 200:
+            continue
+        ordered = sorted(members)
+        for x, i in enumerate(ordered):
+            for j in ordered[x + 1:]:
+                pairs.add((i, j))
+    return sorted(pairs)
+
+
 def review(conn, policy, category: str | None = None, threshold: float = 0.6) -> dict:
     """Near-twin tags, undefined tags and unused tags, for a cleanup pass."""
     tags = list_tags(conn, category, retired=False)
@@ -362,19 +386,19 @@ def review(conn, policy, category: str | None = None, threshold: float = 0.6) ->
     for t in tags:
         by_cat.setdefault(t["category"], []).append(t)
     for cat, group in by_cat.items():
-        for i, a in enumerate(group):
-            for b in group[i + 1:]:
-                names_a = [a["value"], *a["aliases"]]
-                names_b = [b["value"], *b["aliases"]]
-                score = max(similarity(x, y) for x in names_a for y in names_b)
-                if score >= threshold:
-                    keep, drop = (a, b) if a["uses"] >= b["uses"] else (b, a)
-                    pairs.append({
-                        "category": cat, "score": round(score, 2),
-                        "a": {"value": a["value"], "uses": a["uses"], "definition": a["definition"]},
-                        "b": {"value": b["value"], "uses": b["uses"], "definition": b["definition"]},
-                        "merge_hint": f"sticker-box tag merge {cat} {drop['value']} {keep['value']}",
-                    })
+        for i, j in _candidate_pairs(group):
+            a, b = group[i], group[j]
+            names_a = [a["value"], *a["aliases"]]
+            names_b = [b["value"], *b["aliases"]]
+            score = max(similarity(x, y) for x in names_a for y in names_b)
+            if score >= threshold:
+                keep, drop = (a, b) if a["uses"] >= b["uses"] else (b, a)
+                pairs.append({
+                    "category": cat, "score": round(score, 2),
+                    "a": {"value": a["value"], "uses": a["uses"], "definition": a["definition"]},
+                    "b": {"value": b["value"], "uses": b["uses"], "definition": b["definition"]},
+                    "merge_hint": f"sticker-box tag merge {cat} {drop['value']} {keep['value']}",
+                })
     pairs.sort(key=lambda p: -p["score"])
     return {
         "mode": policy["vocabulary"]["mode"],

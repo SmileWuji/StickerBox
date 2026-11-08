@@ -9,6 +9,8 @@ from .errors import BoxError
 TAG_EXACT, TAG_ALIAS, TAG_PART, TAG_CHILD = 10, 8, 5, 4
 TEXT, DESCRIPTION, NOTE, FIELD = 3, 2, 2, 1
 SNIPPET = 160
+MAX_TERMS = 16
+MAX_TERM = 64
 
 
 def terms_of(query: str) -> list[str]:
@@ -94,6 +96,10 @@ def search(box, query: str, tags: list[str] = (), category: str | None = None, a
     conn = box.conn
     policy = box.policy()
     terms = terms_of(query)
+    if len(terms) > MAX_TERMS or any(len(t) > MAX_TERM for t in terms):
+        raise BoxError("usage", f"a query has at most {MAX_TERMS} words of at most {MAX_TERM} characters each")
+    if len(tags) > MAX_TERMS:
+        raise BoxError("usage", f"at most {MAX_TERMS} --tag filters")
     if limit < 1 or limit > 500:
         raise BoxError("usage", "--limit must be between 1 and 500")
     clauses, params = [], []

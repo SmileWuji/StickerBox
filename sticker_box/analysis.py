@@ -8,6 +8,7 @@ from pathlib import Path
 
 from . import keyframes as kf
 from . import media, ocr
+from .errors import BoxError
 from .phash import to_hex
 
 EXTRACTOR = "analysis-v1"
@@ -50,6 +51,17 @@ def sha256_file(path: Path) -> str:
 
 
 def analyze(path: Path, params: dict, with_ocr: bool = False) -> Analysis:
+    try:
+        return _analyze(path, params, with_ocr)
+    except BoxError:
+        raise
+    except MemoryError:
+        raise BoxError("image_too_large", f"{path.name} needs more memory than is available to decode") from None
+    except Exception as err:
+        raise BoxError("undecodable", f"cannot decode {path.name}: {type(err).__name__}") from None
+
+
+def _analyze(path: Path, params: dict, with_ocr: bool) -> Analysis:
     info = media.probe(path)
     frames = media.frames(path, info)
     if info.animated:

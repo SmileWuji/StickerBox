@@ -108,8 +108,8 @@ def commit(box, ref: str, tags: list[str], defines: list[tuple[str, str]], value
 
     to_remove = limits.plan_room(box, policy, sidecar["media"]["bytes"], 1, auto_cleanup)
     expired_now = set(limits.expired(box))
-    removed = [r for sha_ in to_remove for r in limits.remove_items(box, [sha_], "expired" if sha_ in expired_now else "oldest")]
     matches = [x for x in matches if x["ref"] not in set(to_remove)]
+    removed, doomed_files = [], []
 
     now = clock.now()
     ext = sidecar["file"].rsplit(".", 1)[1]
@@ -126,6 +126,14 @@ def commit(box, ref: str, tags: list[str], defines: list[tuple[str, str]], value
         with db.transaction(conn):
             if conn.execute("SELECT 1 FROM item WHERE sha256 = ?", (sha,)).fetchone():
                 raise BoxError("already_stored", f"{sha} was stored by another session", ref=sha)
+            for old in to_remove:
+                gone = conn.execute("SELECT file, added_at, expires_at FROM item WHERE sha256 = ?", (old,)).fetchone()
+                if gone is None:
+                    continue
+                conn.execute("DELETE FROM item WHERE sha256 = ?", (old,))
+                doomed_files.append(box.root / gone["file"])
+                removed.append({"ref": old, "reason": "expired" if old in expired_now else "oldest",
+                                "added_at": gone["added_at"], "expires_at": gone["expires_at"]})
             created = vocab.create_tags(conn, plan.create, f"commit {sha[:12]}")
             conn.execute(
                 """INSERT INTO item (sha256, file, format, width, height, animated, frames, duration_ms, fps, codec, audio, bytes,
@@ -151,7 +159,10 @@ def commit(box, ref: str, tags: list[str], defines: list[tuple[str, str]], value
                 [(sha, x["ref"], x["kind"], x.get("method", "phash"), x.get("distance", x.get("inliers")),
                   json.dumps(x["transform"]) if x.get("transform") else None, stamp) for x in matches],
             )
-            os.replace(src, dest)
+            try:
+                os.replace(src, dest)
+            except FileNotFoundError:
+                raise BoxError("not_found", f"the staged file for {sha} disappeared (temporary/ was cleaned); stage it again", ref=sha) from None
             moved = True
     except sqlite3.IntegrityError as err:
         if moved:
@@ -161,6 +172,8 @@ def commit(box, ref: str, tags: list[str], defines: list[tuple[str, str]], value
         if moved:
             os.replace(dest, src)
         raise
+    for path in doomed_files:
+        path.unlink(missing_ok=True)
     for extra in box.temporary.glob(f"{sha}.*"):
         extra.unlink(missing_ok=True)
     box.write_readme()

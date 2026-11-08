@@ -2,6 +2,7 @@
 no video input can read the whole animation in a single image call."""
 
 import math
+import uuid
 from pathlib import Path
 
 import cv2
@@ -38,7 +39,7 @@ def sheet(keyframes: list[tuple[int, int, int, np.ndarray]], cell: int | None = 
 
 def write(rgb: np.ndarray, path: Path) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name("." + path.name + ".tmp.jpg")
+    tmp = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp.jpg")
     cv2.imwrite(str(tmp), cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR), [cv2.IMWRITE_JPEG_QUALITY, 90])
     tmp.replace(path)
     return path

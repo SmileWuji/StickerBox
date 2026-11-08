@@ -78,3 +78,19 @@ under "For the owner", continue. Each entry says what to change if the owner dis
 20. **The generated README gained a "Using this box" section** with the real commands and the
     required tags and fields for `commit`, so a human or an agent arriving cold can act on it.
     Policy order is now kept as written (fields and categories appear in the preset's order).
+
+## Security review at M5
+
+21. **`stage` never deletes stored items.** Over a box limit it fails with exit 3; with
+    `--auto-cleanup` it stages anyway and lists what `commit --auto-cleanup` would remove. Only
+    `commit --auto-cleanup` and `clean` delete. `temporary/` has its own cap
+    (`STICKER_BOX_MAX_TEMPORARY_MB`, default 1024) and fails with exit 3 `temporary_full`.
+22. **No command reads a text file by path.** `notes set` and `policy set` take text or JSON as an
+    argument or from standard input (`--stdin`). Reading images by path stays (it is what `stage`
+    and `frames` are for), limited to regular files that decode as images.
+23. **`frames` always writes into the box's `temporary/`;** a box is required.
+24. **Decoding limits:** 40M pixels per frame, 3000 frames per file (more is refused, not
+    truncated), 3e9 decoded pixels per file, a 120 s decode deadline
+    (`STICKER_BOX_DECODE_SECONDS`), animations worked on at 1024 px and stills at 1600 px.
+25. **Category names are letters, digits, `_` and `-`** (any script); policy descriptions are one
+    line. Agent-written text in README.md has HTML neutralised and backticks turned into quotes.

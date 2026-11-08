@@ -68,13 +68,6 @@ def expired(box) -> list[str]:
         "SELECT sha256 FROM item WHERE expires_at IS NOT NULL AND expires_at <= ? ORDER BY expires_at", (clock.stamp(),))]
 
 
-def make_room(box, policy: dict, add_bytes: int, add_items: int, auto: bool) -> list[dict]:
-    """For writes that store nothing in the database themselves (stage): remove right away."""
-    shas = plan_room(box, policy, add_bytes, add_items, auto)
-    exp = set(expired(box))
-    return [r for sha in shas for r in remove_items(box, [sha], "expired" if sha in exp else "oldest")]
-
-
 def clean(box, everything: bool = False) -> dict:
     policy = box.policy()
     grace = policy["retention"]["staged_grace_minutes"] * 60

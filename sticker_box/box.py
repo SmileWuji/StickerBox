@@ -1,5 +1,6 @@
 import os
 import re
+import uuid
 import sqlite3
 from pathlib import Path
 
@@ -7,7 +8,7 @@ from . import clock, db, policy, presets
 from .errors import BoxError
 
 DB_NAME = "box.sqlite3"
-LANGUAGE = re.compile(r"^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$")
+LANGUAGE = re.compile(r"[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*")
 NOTES_LIMIT = 20_000
 
 
@@ -45,7 +46,7 @@ class Box:
         from . import manual
 
         text = manual.render(self)
-        tmp = self.root / ".README.md.tmp"
+        tmp = self.root / f".README.md.{uuid.uuid4().hex}.tmp"
         tmp.write_text(text, encoding="utf-8")
         os.replace(tmp, self.readme)
 
@@ -53,9 +54,11 @@ class Box:
     def create(cls, path: Path, preset: str, language: str, description: str | None = None) -> "Box":
         if preset not in presets.PRESETS:
             raise BoxError("unknown_preset", f"unknown preset {preset!r}", presets=sorted(presets.PRESETS))
-        if not LANGUAGE.match(language):
+        if not LANGUAGE.fullmatch(language):
             raise BoxError("invalid_language", f"language {language!r} is not a language tag such as zh-Hans, ja or en")
         path = path.resolve()
+        if description is not None and len(description) > 2000:
+            raise BoxError("too_long", "the description is limited to 2000 characters")
         if (path / DB_NAME).exists():
             raise BoxError("exists", f"{path} already holds a box")
         if path.exists() and (not path.is_dir() or any(path.iterdir())):

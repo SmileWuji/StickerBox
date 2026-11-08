@@ -25,11 +25,23 @@ def _pretty(value) -> str:
     return json.dumps(value, ensure_ascii=False, indent=2)
 
 
-def _read_json(text: str | None, file: str | None):
-    if file:
-        text = Path(file).read_text(encoding="utf-8")
+STDIN_LIMIT = 100_000
+
+
+def _stdin() -> str:
+    import sys
+
+    text = sys.stdin.read(STDIN_LIMIT + 1)
+    if len(text) > STDIN_LIMIT:
+        raise BoxError("too_long", f"standard input is limited to {STDIN_LIMIT} characters")
+    return text
+
+
+def _read_json(text: str | None, from_stdin: bool):
+    if from_stdin:
+        text = _stdin()
     if text is None:
-        raise BoxError("usage", "give the parameters as JSON, or --file")
+        raise BoxError("usage", "give the parameters as JSON, or pass --stdin")
     try:
         return json.loads(text)
     except json.JSONDecodeError as err:
@@ -82,7 +94,7 @@ def cmd_policy_show(args) -> dict:
 
 def cmd_policy_set(args) -> dict:
     box = open_box(args)
-    params = _read_json(args.params, args.file)
+    params = _read_json(args.params, args.stdin)
     with db.transaction(box.conn):
         new = policy.set_rule(box.conn, args.rule, params)
     box.write_readme()
@@ -103,12 +115,12 @@ def cmd_notes_show(args) -> dict:
 
 def cmd_notes_set(args) -> dict:
     box = open_box(args)
-    if args.file:
-        text = Path(args.file).read_text(encoding="utf-8")
+    if args.stdin:
+        text = _stdin()
     elif args.text is not None:
         text = args.text
     else:
-        raise BoxError("usage", "give the notes as text, or --file")
+        raise BoxError("usage", "give the notes as text, or pass --stdin")
     if len(text) > NOTES_LIMIT:
         raise BoxError("too_long", f"notes are limited to {NOTES_LIMIT} characters", length=len(text))
     with db.transaction(box.conn):
@@ -145,10 +157,7 @@ def cmd_frames(args) -> dict:
         else:
             path = stage_mod.staged_file(box, stage_mod.load_sidecar(box, sha))
     result = analysis.analyze(path, policy.DEFAULTS["analysis"])
-    if args.out:
-        out = Path(args.out)
-    else:
-        out = open_box(args).temporary / f"frames-{result.sha256}.jpg"
+    out = open_box(args).temporary / f"frames-{result.sha256}.jpg"
     contact.write(contact.sheet(result.sheet_frames()), out)
     return {"sheet": str(out.resolve()), "keyframes": len(result.keyframes), "animated": result.info.animated,
             "duration_ms": result.info.duration_ms}
@@ -165,7 +174,6 @@ def _values(args) -> dict:
 
 
 def cmd_stage(args) -> dict:
-    from . import limits
     from . import stage as stage_mod
 
     box = open_box(args)
@@ -178,17 +186,9 @@ def cmd_stage(args) -> dict:
     results, failed = [], 0
     for name in args.paths:
         try:
-            path = Path(name)
-            if path.is_file():
-                removed = limits.make_room(box, box.policy(), path.stat().st_size, 1, args.auto_cleanup)
-            else:
-                removed = []
-            result = stage_mod.stage_file(box, path, args.license, args.source)
-            if removed:
-                result["removed"] = removed
-            results.append(result)
+            results.append(stage_mod.stage_file(box, Path(name), args.license, args.source, args.auto_cleanup))
         except BoxError as err:
-            if err.code == "limit_exceeded":
+            if err.code in ("limit_exceeded", "temporary_full"):
                 raise
             failed += 1
             results.append({"status": "error", "name": name, **err.to_dict()})
@@ -375,22 +375,21 @@ def register(sub: argparse._SubParsersAction, common: argparse.ArgumentParser) -
     p = add("set", cmd_policy_set, "replace one rule (logged)", gsub)
     p.add_argument("rule", choices=policy.RULES)
     p.add_argument("params", nargs="?", help="the rule's parameters as JSON")
-    p.add_argument("--file", help="read the JSON from a file")
+    p.add_argument("--stdin", action="store_true", help="read the JSON from standard input")
 
     group = sub.add_parser("notes", help="the README's 'To agents' notes", parents=[common])
     gsub = group.add_subparsers(dest="action", metavar="<action>", required=True, parser_class=sub._parser_class)
     add("show", cmd_notes_show, "print the notes", gsub)
     p = add("set", cmd_notes_set, "replace the notes ('' clears them)", gsub)
     p.add_argument("text", nargs="?")
-    p.add_argument("--file", help="read the notes from a file")
+    p.add_argument("--stdin", action="store_true", help="read the notes from standard input")
 
     p = add("analyze", cmd_analyze, "analyse files without a box: metadata, keyframes, pHash, optional OCR hint")
     p.add_argument("paths", nargs="+")
     p.add_argument("--ocr", action="store_true", help="also run the RapidOCR hint")
 
     p = add("frames", cmd_frames, "contact sheet of an image's keyframes, for reading animations in one image")
-    p.add_argument("ref", help="a file path, or a staged or stored reference")
-    p.add_argument("--out", help="write the sheet here instead of the box's temporary/")
+    p.add_argument("ref", help="a file path, or a staged or stored reference; the sheet goes into the box's temporary/")
 
     def value_args(p, with_fields: bool = True):
         p.add_argument("--license", help="licence of the image; 'unknown' when it cannot be found out")
@@ -404,7 +403,7 @@ def register(sub: argparse._SubParsersAction, common: argparse.ArgumentParser) -
     p = add("stage", cmd_stage, "copy files into temporary/ and analyse them; nothing is stored yet")
     p.add_argument("paths", nargs="+", help="files (or, with --from, one reference in the other box)")
     p.add_argument("--from", dest="from_box", metavar="BOX", help="stage an item from another box")
-    p.add_argument("--auto-cleanup", action="store_true", help="when over a limit, remove expired and then the oldest items")
+    p.add_argument("--auto-cleanup", action="store_true", help="stage even when the box is at its limit; commit --auto-cleanup will make room")
     value_args(p, with_fields=False)
 
     add("staged", cmd_staged, "list staged files")

@@ -79,8 +79,7 @@ Tick a box in the same commit as the work. Bold lines are a milestone's exit cri
 - [x] Filters: `--tag category=value`, `--category`, `--animated`, `--license`, `--limit`; expired items flagged
 - [x] Results carry the absolute file path, tags and note, so a caller can send directly
 - [x] **On the tagged box from M4, ten realistic queries (two-character Chinese included) return sensible top-5 results**
-- [ ] Security code review of M0 to M5 (§12); findings fixed or recorded
-  - review done 2026-11-08: 14 findings (5 high-impact). Next: fix them one by one; list in `261108-SECURITY-REVIEW-M5.md`
+- [x] Security code review of M0 to M5 (§12); findings fixed or recorded (`261108-SECURITY-REVIEW-M5.md`: 14 findings and one in M6, all fixed with tests)
 
 ### M6. Local features (gallery)
 - [x] SIFT extraction, capped keypoints, uint8 descriptors and float32 keypoints into `feature` in `box.sqlite3`; only when the policy enables it
@@ -154,8 +153,8 @@ WebP/WebM across many packs), `../private/pack-a/` and `../private/pack-b/`
 ```
 
 The box path comes from `--box`, else `STICKER_BOX_DIR`, else the current directory if it holds a
-`box.sqlite3`. SQLite runs in WAL mode with a busy timeout, so several agent sessions can use one
-box at once.
+`box.sqlite3`. SQLite uses its default rollback journal with a 30 s busy timeout (no WAL side
+files, see decision 1), so several agent sessions can use one box at once.
 
 ## 4. Commands
 

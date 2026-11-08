@@ -178,8 +178,11 @@ def test_limits_fail_loudly_and_auto_cleanup_makes_room(box, run_cli):
     out = run_cli("stage", str(GENERIC / "animated.gif"), "--box", str(root), expect=3)
     assert out["error"] == "limit_exceeded" and out["items"] == 1 and out["max_items"] == 1
     (b,) = stage(run_cli, root, GENERIC / "animated.gif", extra=("--auto-cleanup",))
-    assert b["removed"][0]["ref"] == a["ref"] and b["removed"][0]["reason"] == "oldest"
-    run_cli("commit", b["ref"], "--box", str(root), "--license", "unknown")
+    assert b["commit_would_remove"] == [a["ref"]]
+    assert rows(root, "SELECT COUNT(*) FROM item") == [(1,)]
+    assert run_cli("commit", b["ref"], "--box", str(root), "--license", "unknown", expect=3)["error"] == "limit_exceeded"
+    out = run_cli("commit", b["ref"], "--box", str(root), "--license", "unknown", "--auto-cleanup")
+    assert out["removed"][0]["ref"] == a["ref"] and out["removed"][0]["reason"] == "oldest"
     assert rows(root, "SELECT COUNT(*) FROM item") == [(1,)]
 
 

@@ -153,9 +153,10 @@ def test_contact_sheet_tiles_keyframes(tmp_path):
     assert out.is_file() and rgb.shape[1] > 256 and len(result.keyframes) > 1
 
 
-def test_frames_command_with_out(tmp_path, run_cli):
-    out = run_cli("frames", str(GENERIC / "animated.gif"), "--out", str(tmp_path / "s.jpg"))
-    assert Path(out["sheet"]).is_file() and out["animated"] is True
+def test_frames_command_writes_into_the_box(tmp_path, run_cli):
+    run_cli("init", str(tmp_path / "b"), "--preset", "gallery", "--language", "en")
+    out = run_cli("frames", str(GENERIC / "animated.gif"), "--box", str(tmp_path / "b"))
+    assert Path(out["sheet"]).parent == (tmp_path / "b" / "temporary").resolve() and out["animated"] is True
 
 
 @pytest.mark.private

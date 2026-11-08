@@ -11,8 +11,9 @@ CORE_FIELDS = ("license", "source", "text", "description", "note")
 FORMATS = ("webp", "png", "jpeg", "gif", "webm")
 MODES = ("free", "open", "locked")
 ON_DUPLICATE = ("reject", "report", "link")
-FIELD_NAME = re.compile(r"^[a-z][a-z0-9_]{0,31}$")
-CATEGORY_NAME = re.compile(r"^[^\s=/,|]{1,32}$")
+FIELD_NAME = re.compile(r"[a-z][a-z0-9_]{0,31}")
+CATEGORY_NAME = re.compile(r"[\w\-]{1,32}")
+CODEC = re.compile(r"[a-z0-9]{1,16}")
 
 DEFAULTS = {
     "fields": {},
@@ -61,15 +62,15 @@ def _bool(rule, value, name):
 
 
 def _text(rule, value, name, limit=500):
-    if not isinstance(value, str) or len(value) > limit:
-        _fail(rule, f"{name} must be a string of at most {limit} characters")
+    if not isinstance(value, str) or len(value) > limit or any(ord(c) < 32 or ord(c) == 127 for c in value):
+        _fail(rule, f"{name} must be one line of at most {limit} characters")
     return value
 
 
 def _fields(p: dict) -> dict:
     out = {}
     for name, spec in p.items():
-        if not FIELD_NAME.match(name):
+        if not FIELD_NAME.fullmatch(name):
             _fail("fields", f"field name {name!r} must match {FIELD_NAME.pattern}")
         spec = _keys("fields", spec or {}, {"required", "allow_empty", "description"}, name)
         out[name] = {
@@ -87,8 +88,8 @@ def _fields(p: dict) -> dict:
 def _categories(p: dict) -> dict:
     out = {}
     for name, spec in p.items():
-        if not CATEGORY_NAME.match(name):
-            _fail("categories", f"category name {name!r} may not contain spaces or any of = / , | and is at most 32 characters")
+        if not CATEGORY_NAME.fullmatch(name):
+            _fail("categories", f"category name {name!r} must be 1 to 32 letters, digits, '_' or '-'")
         spec = _keys("categories", spec or {}, {"description", "multiple", "required"}, name)
         out[name] = {
             "description": _text("categories", spec.get("description", ""), f"{name}.description"),
@@ -109,7 +110,7 @@ def _constraints(spec, where: str) -> dict:
             if value is not None:
                 out[key] = _bool("files", value, f"{where}.{key}")
         elif key == "codecs":
-            if not isinstance(value, list) or not all(isinstance(c, str) and c for c in value):
+            if not isinstance(value, list) or not all(isinstance(c, str) and CODEC.fullmatch(c.lower()) for c in value):
                 _fail("files", f"{where}.codecs must be a list of codec names such as [\"vp9\"]")
             out[key] = [c.lower() for c in value]
         elif key == "max_fps":
@@ -284,6 +285,12 @@ def _describe_constraints(c: dict) -> str:
     return "; ".join(parts)
 
 
+def _safe(text: str) -> str:
+    from .manual import cell
+
+    return cell(text)
+
+
 def describe(policy: dict) -> dict[str, list[str]]:
     """Plain-language statements of every rule, for README.md and `info`."""
     out: dict[str, list[str]] = {}
@@ -305,14 +312,14 @@ def describe(policy: dict) -> dict[str, list[str]]:
         state = "required" if spec["required"] else "optional"
         if spec["required"] and spec["allow_empty"]:
             state = "required, may be empty"
-        lines.append(f"`{name}` ({state})" + (f": {spec['description']}" if spec["description"] else ""))
+        lines.append(f"`{name}` ({state})" + (f": {_safe(spec['description'])}" if spec["description"] else ""))
     out["fields"] = lines
 
     lines = []
     for name, spec in policy["categories"].items():
         count = "one or more values" if spec["multiple"] else "one value"
         need = "required" if spec["required"] else "optional"
-        lines.append(f"`{name}` ({need}, {count})" + (f": {spec['description']}" if spec["description"] else ""))
+        lines.append(f"`{name}` ({need}, {count})" + (f": {_safe(spec['description'])}" if spec["description"] else ""))
     mode = policy["vocabulary"]["mode"]
     lines.append({
         "free": "Vocabulary is free: any tag may be used and is created on first use.",
