@@ -131,11 +131,19 @@ def cmd_analyze(args) -> dict:
 
 
 def cmd_frames(args) -> dict:
-    from . import analysis, contact
+    from . import analysis, contact, refs
+    from . import stage as stage_mod
 
     path = Path(args.ref)
     if not path.is_file():
-        raise BoxError("not_found", f"{args.ref} is not a file")
+        if not refs.looks_like_ref(args.ref):
+            raise BoxError("not_found", f"{args.ref} is neither a file nor a reference")
+        box = open_box(args)
+        kind, sha = refs.resolve(box, args.ref)
+        if kind == "item":
+            path = box.root / box.conn.execute("SELECT file FROM item WHERE sha256 = ?", (sha,)).fetchone()["file"]
+        else:
+            path = stage_mod.staged_file(box, stage_mod.load_sidecar(box, sha))
     result = analysis.analyze(path, policy.DEFAULTS["analysis"])
     if args.out:
         out = Path(args.out)
@@ -144,6 +152,95 @@ def cmd_frames(args) -> dict:
     contact.write(contact.sheet(result.sheet_frames()), out)
     return {"sheet": str(out.resolve()), "keyframes": len(result.keyframes), "animated": result.info.animated,
             "duration_ms": result.info.duration_ms}
+
+
+def _values(args) -> dict:
+    values = {name: getattr(args, name, None) for name in ("license", "source", "text", "description", "note")}
+    for item in getattr(args, "field", None) or []:
+        if "=" not in item:
+            raise BoxError("usage", f"--field takes name=value, got {item!r}")
+        name, value = item.split("=", 1)
+        values[name.strip()] = value
+    return values
+
+
+def cmd_stage(args) -> dict:
+    from . import limits
+    from . import stage as stage_mod
+
+    box = open_box(args)
+    if args.from_box:
+        from . import transfer
+
+        if len(args.paths) != 1:
+            raise BoxError("usage", "stage --from takes exactly one reference")
+        return transfer.stage_from(box, Path(args.from_box), args.paths[0], args.license, args.source, args.auto_cleanup)
+    results, failed = [], 0
+    for name in args.paths:
+        try:
+            path = Path(name)
+            if path.is_file():
+                removed = limits.make_room(box, box.policy(), path.stat().st_size, 1, args.auto_cleanup)
+            else:
+                removed = []
+            result = stage_mod.stage_file(box, path, args.license, args.source)
+            if removed:
+                result["removed"] = removed
+            results.append(result)
+        except BoxError as err:
+            if err.code == "limit_exceeded":
+                raise
+            failed += 1
+            results.append({"status": "error", "name": name, **err.to_dict()})
+    out = {"results": results}
+    if failed:
+        out["_exit"] = 1
+    return out
+
+
+def cmd_staged(args) -> dict:
+    from . import stage as stage_mod
+
+    return {"staged": stage_mod.listing(open_box(args))}
+
+
+def cmd_commit(args) -> dict:
+    from . import items
+
+    return items.commit(open_box(args), args.ref, args.tag or [], [tuple(d) for d in args.define or []], _values(args), args.auto_cleanup)
+
+
+def cmd_show(args) -> dict:
+    from . import items, refs
+    from . import stage as stage_mod
+
+    box = open_box(args)
+    kind, sha = refs.resolve(box, args.ref)
+    if kind == "item":
+        return items.item_dict(box, sha)
+    policy_ = box.policy()
+    sidecar = stage_mod.ensure_fresh(box, policy_, sha)
+    return stage_mod.report(box, policy_, sidecar, "staged")
+
+
+def cmd_edit(args) -> dict:
+    from . import items
+
+    return items.edit(open_box(args), args.ref, args.add_tag or [], args.remove_tag or [], [tuple(d) for d in args.define or []],
+                      _values(args), args.clear or [])
+
+
+def cmd_remove(args) -> dict:
+    from . import items
+
+    box = open_box(args)
+    return {"results": [items.remove(box, ref) for ref in args.refs]}
+
+
+def cmd_clean(args) -> dict:
+    from . import limits
+
+    return limits.clean(open_box(args), everything=args.all)
 
 
 def register(sub: argparse._SubParsersAction, common: argparse.ArgumentParser) -> None:
@@ -182,5 +279,46 @@ def register(sub: argparse._SubParsersAction, common: argparse.ArgumentParser) -
     p.add_argument("--ocr", action="store_true", help="also run the RapidOCR hint")
 
     p = add("frames", cmd_frames, "contact sheet of an image's keyframes, for reading animations in one image")
-    p.add_argument("ref", help="a file path (or, from M3, a staged or stored reference)")
+    p.add_argument("ref", help="a file path, or a staged or stored reference")
     p.add_argument("--out", help="write the sheet here instead of the box's temporary/")
+
+    def value_args(p, with_fields: bool = True):
+        p.add_argument("--license", help="licence of the image; 'unknown' when it cannot be found out")
+        p.add_argument("--source", help="where the image came from")
+        if with_fields:
+            p.add_argument("--text", help="all text on the image, verbatim ('' when there is none)")
+            p.add_argument("--description", help="what the image shows")
+            p.add_argument("--note", help="when to use it")
+            p.add_argument("--field", action="append", metavar="NAME=VALUE", help="a field the policy declares")
+
+    p = add("stage", cmd_stage, "copy files into temporary/ and analyse them; nothing is stored yet")
+    p.add_argument("paths", nargs="+", help="files (or, with --from, one reference in the other box)")
+    p.add_argument("--from", dest="from_box", metavar="BOX", help="stage an item from another box")
+    p.add_argument("--auto-cleanup", action="store_true", help="when over a limit, remove expired and then the oldest items")
+    value_args(p, with_fields=False)
+
+    add("staged", cmd_staged, "list staged files")
+
+    p = add("commit", cmd_commit, "store a staged file with its tags and fields; every rule is checked first")
+    p.add_argument("ref")
+    p.add_argument("--tag", action="append", metavar="CATEGORY=VALUE")
+    p.add_argument("--define", action="append", nargs=2, metavar=("CATEGORY=VALUE", "DEFINITION"), help="tag it and create the tag with this definition")
+    p.add_argument("--auto-cleanup", action="store_true", help="when over a limit, remove expired and then the oldest items")
+    value_args(p)
+
+    p = add("show", cmd_show, "show a stored item or a staged file")
+    p.add_argument("ref")
+
+    p = add("edit", cmd_edit, "change a stored item's tags and fields")
+    p.add_argument("ref")
+    p.add_argument("--add-tag", action="append", metavar="CATEGORY=VALUE")
+    p.add_argument("--remove-tag", action="append", metavar="CATEGORY=VALUE")
+    p.add_argument("--define", action="append", nargs=2, metavar=("CATEGORY=VALUE", "DEFINITION"))
+    p.add_argument("--clear", action="append", metavar="FIELD", help="unset an optional field")
+    value_args(p)
+
+    p = add("remove", cmd_remove, "delete stored items or staged files")
+    p.add_argument("refs", nargs="+")
+
+    p = add("clean", cmd_clean, "remove staged files past the grace period and expired items")
+    p.add_argument("--all", action="store_true", help="remove every staged file, however recent")

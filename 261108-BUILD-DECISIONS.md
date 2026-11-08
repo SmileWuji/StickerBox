@@ -41,3 +41,26 @@ under "For the owner", continue. Each entry says what to change if the owner dis
    file before staging it.
 10. **Frames are worked on at most 1600 px on the long side**, which keeps memory bounded for big
     gallery images; pHash is unaffected (it shrinks to 32 px anyway).
+
+## M3
+
+11. **Four kinds of pHash relation.** `near_duplicate` (still and still, or two animations whose
+    first frames match), `frame_of` / `has_frame` (a still that is a frame of an animation),
+    `shares_frames` (two animations sharing at least 30% of the new one's keyframes, and at least
+    two). Only `near_duplicate` counts as a duplicate for `on_duplicate: reject`; the others are
+    links the design asked for ("动图+抽帧"). Near-uniform frames (at most 4 or at least 60 bits
+    set) are ignored, since every blank frame matches every other.
+12. **Relations are always recorded at commit.** They are facts about the box. So `report` and
+    `link` currently behave the same (stored, listed in the commit result); only `reject`
+    differs. Collapse the two values later if no difference is wanted.
+13. **`--auto-cleanup` on `commit` plans its removals first and runs them only after every other
+    check has passed,** so a commit refused for a missing tag never deletes anything. On `stage`
+    (which writes no row) it removes right away, as the caller asked.
+14. **`stage` with several files keeps going** past a bad one, reports each file's status, and
+    exits 1 if any failed. A limit error stops it at once (exit 3).
+15. **Tag values** are one line, at most 64 characters, without `|` (the search separator). An
+    input that differs from an existing tag only in case, width or punctuation reuses that tag
+    with a warning instead of creating a near-twin. `--define CATEGORY=VALUE DEFINITION` both
+    creates the tag and puts it on the item.
+16. **A missing required category is not reported** when a tag in that category was given but
+    refused (for example an undefined new tag), to keep the problem list to the real cause.

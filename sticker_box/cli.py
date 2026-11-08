@@ -88,11 +88,12 @@ def main(argv: list[str] | None = None) -> int:
             parser.print_help()
             return EXIT_OK
         result = args.handler(args)
+        code = result.pop("_exit", EXIT_OK)
         as_json = json_wanted(argv, args)
         if as_json:
             result.pop("_text", None)
         emit(result, as_json)
-        return EXIT_OK
+        return code
     except BoxError as err:
         emit_error(err, json_wanted(argv, args))
         return err.exit_code

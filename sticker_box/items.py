@@ -1,0 +1,246 @@
+"""Stored items: commit from staging, show, edit, remove. Every check runs before anything is
+written, and all failures are returned together."""
+
+import json
+import os
+import sqlite3
+
+from . import clock, db, dupes, refs, rules, stage, vocab
+from .errors import BoxError
+from .phash import to_hex
+
+LIMITS = {"license": 200, "source": 1000, "text": 4000, "description": 4000, "note": 2000}
+FIELD_LIMIT = 2000
+CORE = ("license", "source", "text", "description", "note")
+INVERSE = {"frame_of": "has_frame", "has_frame": "frame_of", "crop_of": "contains", "contains": "crop_of"}
+
+
+def field_problems(policy: dict, values: dict) -> list[dict]:
+    problems = []
+    spec_all = policy["fields"]
+    for name in values:
+        if name not in spec_all:
+            problems.append({"problem": "unknown_field", "field": name, "message": f"no field {name!r}; fields: {', '.join(spec_all)}"})
+    for name, spec in spec_all.items():
+        value = values.get(name)
+        if value is None or (value == "" and not spec["allow_empty"]):
+            if spec["required"]:
+                hint = " (use 'unknown' when it cannot be found out)" if name == "license" else ""
+                hint = hint or (f": {spec['description']}" if spec["description"] else "")
+                problems.append({"problem": "missing_field", "field": name, "message": f"{name} is required{hint}"})
+            continue
+        if len(value) > LIMITS.get(name, FIELD_LIMIT):
+            problems.append({"problem": "too_long", "field": name, "message": f"{name} is limited to {LIMITS.get(name, FIELD_LIMIT)} characters"})
+    return problems
+
+
+def _relations(box, sha: str) -> list[dict]:
+    out = []
+    for r in box.conn.execute("SELECT * FROM relation WHERE a = ? OR b = ?", (sha, sha)):
+        mine = r["a"] == sha
+        other = r["b"] if mine else r["a"]
+        kind = r["kind"] if mine else INVERSE.get(r["kind"], r["kind"])
+        out.append({"ref": other, "kind": kind, "method": r["method"], "score": r["score"],
+                    "transform": json.loads(r["transform"]) if r["transform"] and mine else None})
+    return out
+
+
+def is_expired(row: sqlite3.Row) -> bool:
+    return bool(row["expires_at"]) and clock.parse(row["expires_at"]) <= clock.now()
+
+
+def item_dict(box, sha: str) -> dict:
+    row = box.conn.execute("SELECT * FROM item WHERE sha256 = ?", (sha,)).fetchone()
+    if row is None:
+        raise BoxError("not_found", f"no stored item {sha}", ref=sha)
+    tags = box.conn.execute(
+        "SELECT t.category, t.value FROM item_tag it JOIN tag t ON t.id = it.tag_id WHERE it.sha256 = ? ORDER BY t.category, t.value", (sha,)
+    ).fetchall()
+    fields = {r["name"]: r["value"] for r in box.conn.execute("SELECT name, value FROM item_field WHERE sha256 = ? ORDER BY name", (sha,))}
+    keyframes = box.conn.execute("SELECT COUNT(*) AS n FROM keyframe WHERE sha256 = ?", (sha,)).fetchone()["n"]
+    return {
+        "ref": sha,
+        "file": str(box.root / row["file"]),
+        "format": row["format"], "width": row["width"], "height": row["height"],
+        "animated": bool(row["animated"]), "frames": row["frames"], "duration_ms": row["duration_ms"], "fps": row["fps"],
+        "codec": row["codec"], "audio": bool(row["audio"]), "bytes": row["bytes"],
+        "phash": to_hex(db.to_unsigned(row["phash"])), "keyframes": keyframes,
+        "added_at": row["added_at"], "updated_at": row["updated_at"], "expires_at": row["expires_at"], "expired": is_expired(row),
+        "license": row["license"], "source": row["source"], "text": row["text"], "description": row["description"], "note": row["note"],
+        "fields": fields,
+        "tags": [f"{t['category']}={t['value']}" for t in tags],
+        "relations": _relations(box, sha),
+    }
+
+
+def _matches(box, policy: dict, sidecar: dict, exclude: str | None = None) -> list[dict]:
+    matches = dupes.find(box.conn, dupes.hex_hashes(sidecar), sidecar["media"]["animated"], policy["duplicates"]["phash_max_distance"], exclude)
+    seen = {m["ref"] for m in matches}
+    for m in sidecar.get("sift_matches") or []:
+        if m["ref"] not in seen and box.conn.execute("SELECT 1 FROM item WHERE sha256 = ?", (m["ref"],)).fetchone():
+            matches.append(m)
+    return matches
+
+
+DUPLICATE_KINDS = {"near_duplicate", "duplicate"}
+
+
+def commit(box, ref: str, tags: list[str], defines: list[tuple[str, str]], values: dict, auto_cleanup: bool = False) -> dict:
+    policy = box.policy()
+    kind, sha = refs.resolve(box, ref)
+    if kind == "item":
+        raise BoxError("already_stored", f"{sha} is already stored; use `edit` to change it", ref=sha)
+    sidecar = stage.ensure_fresh(box, policy, sha)
+    merged = {"license": sidecar.get("license"), "source": sidecar.get("source"), **{k: v for k, v in values.items() if v is not None}}
+    plan = vocab.plan(box.conn, policy, tags, defines, box.language)
+    problems = rules.check_file(policy["files"], sidecar["media"])
+    problems += field_problems(policy, merged)
+    problems += plan.problems
+    problems += vocab.cardinality(policy, plan.labels, plan.attempted)
+    matches = _matches(box, policy, sidecar)
+    near = [m for m in matches if m["kind"] in DUPLICATE_KINDS]
+    if near and policy["duplicates"]["on_duplicate"] == "reject":
+        problems.append({"problem": "duplicate", "message": "a near-duplicate is already stored and this box refuses near-duplicates",
+                         "matches": stage.duplicate_report(box, near)})
+    if problems:
+        raise BoxError("invalid", f"{len(problems)} problem(s); nothing was stored", problems=problems, warnings=plan.warnings)
+    from . import limits
+
+    to_remove = limits.plan_room(box, policy, sidecar["media"]["bytes"], 1, auto_cleanup)
+    expired_now = set(limits.expired(box))
+    removed = [r for sha_ in to_remove for r in limits.remove_items(box, [sha_], "expired" if sha_ in expired_now else "oldest")]
+    matches = [x for x in matches if x["ref"] not in set(to_remove)]
+
+    now = clock.now()
+    ext = sidecar["file"].rsplit(".", 1)[1]
+    rel = f"persistent/{now:%Y%m}/{now:%Y%m%d}-{sha}.{ext}"
+    src, dest = stage.staged_file(box, sidecar), box.root / rel
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    m = sidecar["media"]
+    minutes = policy["retention"]["expire_after_minutes"]
+    expires = clock.later(minutes, now) if minutes else None
+    custom = {k: v for k, v in merged.items() if k not in CORE}
+    conn = box.conn
+    moved = False
+    try:
+        with db.transaction(conn):
+            if conn.execute("SELECT 1 FROM item WHERE sha256 = ?", (sha,)).fetchone():
+                raise BoxError("already_stored", f"{sha} was stored by another session", ref=sha)
+            created = vocab.create_tags(conn, plan.create, f"commit {sha[:12]}")
+            conn.execute(
+                """INSERT INTO item (sha256, file, format, width, height, animated, frames, duration_ms, fps, codec, audio, bytes,
+                   phash, added_at, updated_at, expires_at, license, source, text, description, note)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (sha, rel, m["format"], m["width"], m["height"], int(m["animated"]), m["frames"], m["duration_ms"], m["fps"],
+                 m["codec"], int(m["audio"]), m["bytes"], db.to_signed(int(sidecar["phash"], 16)), clock.stamp(now), clock.stamp(now),
+                 expires, merged.get("license"), merged.get("source"), merged.get("text"), merged.get("description"), merged.get("note")),
+            )
+            conn.executemany("INSERT OR IGNORE INTO item_tag (sha256, tag_id) VALUES (?, ?)", [(sha, t) for t in plan.tag_ids + created])
+            conn.executemany("INSERT INTO item_field (sha256, name, value) VALUES (?, ?, ?)", [(sha, k, v) for k, v in custom.items()])
+            conn.executemany(
+                "INSERT INTO keyframe (sha256, idx, frame_no, t_ms, phash) VALUES (?, ?, ?, ?, ?)",
+                [(sha, k["idx"], k["frame_no"], k["t_ms"], db.to_signed(int(k["phash"], 16))) for k in sidecar["keyframes"]],
+            )
+            if policy["duplicates"]["sift"]:
+                from . import features
+
+                features.store(box, sha, sidecar)
+            stamp = clock.stamp(now)
+            conn.executemany(
+                "INSERT OR REPLACE INTO relation (a, b, kind, method, score, transform, found_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                [(sha, x["ref"], x["kind"], x.get("method", "phash"), x.get("distance", x.get("inliers")),
+                  json.dumps(x["transform"]) if x.get("transform") else None, stamp) for x in matches],
+            )
+            os.replace(src, dest)
+            moved = True
+    except sqlite3.IntegrityError as err:
+        if moved:
+            os.replace(dest, src)
+        raise BoxError("conflict", f"another session changed the box at the same time ({err}); run the command again") from None
+    except BaseException:
+        if moved:
+            os.replace(dest, src)
+        raise
+    for extra in box.temporary.glob(f"{sha}.*"):
+        extra.unlink(missing_ok=True)
+    box.write_readme()
+    return {
+        "status": "stored",
+        "ref": sha,
+        "file": str(dest),
+        "tags": plan.labels,
+        "created_tags": [f"{c['category']}={c['value']}" for c in plan.create],
+        "relations": stage.duplicate_report(box, matches),
+        "expires_at": expires,
+        "removed": removed,
+        "warnings": plan.warnings,
+    }
+
+
+def _current_tags(box, sha: str) -> dict[int, str]:
+    return {
+        r["id"]: f"{r['category']}={r['value']}"
+        for r in box.conn.execute("SELECT t.id, t.category, t.value FROM item_tag it JOIN tag t ON t.id = it.tag_id WHERE it.sha256 = ?", (sha,))
+    }
+
+
+def edit(box, ref: str, add: list[str], remove: list[str], defines: list[tuple[str, str]], values: dict, clear: list[str]) -> dict:
+    policy = box.policy()
+    _, sha = refs.resolve(box, ref, staged=False)
+    row = box.conn.execute("SELECT * FROM item WHERE sha256 = ?", (sha,)).fetchone()
+    current = _current_tags(box, sha)
+    plan = vocab.plan(box.conn, policy, add, defines, box.language)
+    problems = list(plan.problems)
+    drop: list[int] = []
+    for text in remove:
+        try:
+            category, value = vocab.parse(text, policy)
+        except BoxError as err:
+            problems.append({"problem": "invalid_tag", "message": err.message})
+            continue
+        tag = vocab.tag_row(box.conn, category, value)
+        if tag is None or tag["id"] not in current:
+            problems.append({"problem": "not_tagged", "tag": f"{category}={value}", "message": f"the item has no tag {category}={value}"})
+        else:
+            drop.append(tag["id"])
+    final = [label for tid, label in current.items() if tid not in drop]
+    final += [label for label in plan.labels if label not in final]
+    problems += vocab.cardinality(policy, final, plan.attempted)
+    fields = {name: row[name] for name in CORE}
+    fields.update({r["name"]: r["value"] for r in box.conn.execute("SELECT name, value FROM item_field WHERE sha256 = ?", (sha,))})
+    fields.update({k: v for k, v in values.items() if v is not None})
+    for name in clear:
+        fields[name] = None
+    problems += field_problems(policy, {k: v for k, v in fields.items() if v is not None})
+    if problems:
+        raise BoxError("invalid", f"{len(problems)} problem(s); nothing was changed", problems=problems, warnings=plan.warnings)
+    with db.transaction(box.conn):
+        created = vocab.create_tags(box.conn, plan.create, f"edit {sha[:12]}")
+        box.conn.executemany("DELETE FROM item_tag WHERE sha256 = ? AND tag_id = ?", [(sha, t) for t in drop])
+        box.conn.executemany("INSERT OR IGNORE INTO item_tag (sha256, tag_id) VALUES (?, ?)", [(sha, t) for t in plan.tag_ids + created])
+        box.conn.execute(
+            "UPDATE item SET license = ?, source = ?, text = ?, description = ?, note = ?, updated_at = ? WHERE sha256 = ?",
+            (fields["license"], fields["source"], fields["text"], fields["description"], fields["note"], clock.stamp(), sha),
+        )
+        for name, value in fields.items():
+            if name in CORE:
+                continue
+            if value is None:
+                box.conn.execute("DELETE FROM item_field WHERE sha256 = ? AND name = ?", (sha, name))
+            else:
+                box.conn.execute("INSERT OR REPLACE INTO item_field (sha256, name, value) VALUES (?, ?, ?)", (sha, name, value))
+    box.write_readme()
+    return {"status": "edited", **item_dict(box, sha), "warnings": plan.warnings}
+
+
+def remove(box, ref: str) -> dict:
+    kind, sha = refs.resolve(box, ref)
+    if kind == "staged":
+        stage.remove(box, sha)
+        return {"status": "removed", "ref": sha, "was": "staged"}
+    row = box.conn.execute("SELECT file FROM item WHERE sha256 = ?", (sha,)).fetchone()
+    with db.transaction(box.conn):
+        box.conn.execute("DELETE FROM item WHERE sha256 = ?", (sha,))
+    (box.root / row["file"]).unlink(missing_ok=True)
+    box.write_readme()
+    return {"status": "removed", "ref": sha, "was": "stored"}

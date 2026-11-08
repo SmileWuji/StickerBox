@@ -55,13 +55,13 @@ Tick a box in the same commit as the work. Bold lines are a milestone's exit cri
 - [x] **`stage`-less analysis of every file in the corpus finishes without error, and contact sheets of five animations read correctly by eye**
 
 ### M3. Stage and commit
-- [ ] `stage <file>...`: copy into `temporary/`, analysis sidecar, file rules reported early, duplicates by sha256 and pHash; no database write
-- [ ] `staged`: list staged files with their sidecar summary
-- [ ] `commit <ref>`: fields, tags, text, description, note; every rule checked, all failures returned at once; file moved to `persistent/<yyyymm>/<yyyymmdd>-<sha256>.<ext>` and row written
-- [ ] `show <ref>`, `edit <ref>`, `remove <ref>`; references are a full sha256 or a unique prefix of at least 8
-- [ ] On-duplicate behaviour per policy (reject, report, link); `relation` rows written at commit, including still-to-keyframe links
-- [ ] Crash safety: file move and row insert ordered so a crash leaves at most an orphan file, which `check` reports
-- [ ] **Twenty corpus stickers staged and committed into a `telegram-sticker` box with tags; a recompressed copy of one is reported as a duplicate; a non-compliant file is refused with every reason**
+- [x] `stage <file>...`: copy into `temporary/`, analysis sidecar, file rules reported early, duplicates by sha256 and pHash; no database write
+- [x] `staged`: list staged files with their sidecar summary
+- [x] `commit <ref>`: fields, tags, text, description, note; every rule checked, all failures returned at once; file moved to `persistent/<yyyymm>/<yyyymmdd>-<sha256>.<ext>` and row written
+- [x] `show <ref>`, `edit <ref>`, `remove <ref>`; references are a full sha256 or a unique prefix of at least 8
+- [x] On-duplicate behaviour per policy (reject, report, link); `relation` rows written at commit, including still-to-keyframe links
+- [x] Crash safety: file move and row insert ordered so a crash leaves at most an orphan file, which `check` reports (the report itself lands with `check` in M7)
+- [x] **Twenty corpus stickers staged and committed into a `telegram-sticker` box with tags; a recompressed copy of one is reported as a duplicate; a non-compliant file is refused with every reason**
 
 ### M4. Vocabulary
 - [ ] `tag list | new | define | alias | rename | merge | retire`, each logged in `vocab_log`
@@ -90,10 +90,10 @@ Tick a box in the same commit as the work. Bold lines are a milestone's exit cri
 - [ ] **On a gallery of a few hundred corpus images plus generated crops, rotations and screenshots, crops and rotations are linked, unrelated images are not, and insert stays under a few seconds at 3,000 images (synthetic scale test)**
 
 ### M7. Limits, cleanup, transfer, audit
-- [ ] Limits (size, count) checked on `stage` and `commit`; over the limit fails with usage, limit and the `clean` command
-- [ ] Retention: `expires_at` set at commit; expired items stay readable and are flagged
-- [ ] `clean` (staged files past the grace period, and expired items), `clean --all`
-- [ ] `--auto-cleanup` on writes: expired first, then oldest until under the limit; everything removed is listed
+- [x] Limits (size, count) checked on `stage` and `commit`; over the limit fails with usage, limit and the `clean` command (landed with M3)
+- [x] Retention: `expires_at` set at commit; expired items stay readable and are flagged (landed with M3)
+- [x] `clean` (staged files past the grace period, and expired items), `clean --all` (landed with M3)
+- [x] `--auto-cleanup` on writes: expired first, then oldest until under the limit; everything removed is listed (landed with M3)
 - [ ] `stage --from <box> <ref>`: staged in the destination with analysis, licence and source carried over; validated at `commit`
 - [ ] `check`: every item against the current policy, orphan files, missing files, stale features
 - [ ] **A buffer fills, refuses a write loudly, recovers with `--auto-cleanup`, and an item transferred from it into a sticker box passes only once the required tags are given**
