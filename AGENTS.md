@@ -86,9 +86,9 @@ Tick a box in the same commit as the work. Bold lines are a milestone's exit cri
 - [x] Insert-time matching: batched vote shortlist, pairwise ratio test and RANSAC on the top candidates (§8); RANSAC fits a similarity transform, not a full homography (see decisions)
 - [x] Relation kinds from the homography: duplicate, crop, zoom, rotation, with region, scale and angle in `transform`
 - [x] `dupes`: clusters from `relation` with a suggested keeper; `reindex` rebuilds features and relations
-  - tests still to write
-- [ ] Threshold tuning on real images (crops, rotations, QQ-style screenshots, text-heavy images); numbers and chosen defaults in a dated note
-- [ ] **On a gallery of a few hundred corpus images plus generated crops, rotations and screenshots, crops and rotations are linked, unrelated images are not, and insert stays under a few seconds at 3,000 images (synthetic scale test)**
+- [x] Threshold tuning on real images (crops, rotations, QQ-style screenshots, text-heavy images); numbers and chosen defaults in a dated note (`261108-SIFT-TUNING.md`)
+- [x] **On a gallery of a few hundred corpus images plus generated crops, rotations and screenshots, crops and rotations are linked, unrelated images are not, and insert stays under a few seconds at 3,000 images (synthetic scale test)**
+  - met with a caveat: 89% of variants linked, 1.7 s median insert at 3,000; about 6% of inserts also get a spurious relation (decision 30)
 
 ### M7. Limits, cleanup, transfer, audit
 - [x] Limits (size, count) checked on `stage` and `commit`; over the limit fails with usage, limit and the `clean` command (landed with M3)

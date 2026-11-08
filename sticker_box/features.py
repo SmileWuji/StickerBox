@@ -22,6 +22,7 @@ SHORTLIST = 3
 SAME = 0.85
 ROTATION_DEG = 8.0
 MIN_SPREAD = 0.04
+SCALE_RANGE = (0.05, 20.0)
 
 
 def extract(rgb: np.ndarray, orig_size: tuple[int, int], keypoints: int) -> tuple[np.ndarray, np.ndarray] | None:
@@ -194,7 +195,8 @@ def verify(a_sets: list, b_sets: list, ratio: float, size_a: tuple[int, int], si
             if inliers < 6 or _spread(src[keep], size_a) < MIN_SPREAD or _spread(dst[keep], size_b) < MIN_SPREAD:
                 continue
             H = np.vstack([M, [0.0, 0.0, 1.0]])
-            if inliers > best[0] and abs(np.linalg.det(H[:2, :2])) > 1e-6:
+            scale = math.sqrt(abs(float(np.linalg.det(H[:2, :2]))))
+            if inliers > best[0] and SCALE_RANGE[0] <= scale <= SCALE_RANGE[1]:
                 best = (inliers, H)
     return best
 

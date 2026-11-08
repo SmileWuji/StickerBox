@@ -25,7 +25,7 @@ DEFAULTS = {
     "retention": {"expire_after_minutes": None, "staged_grace_minutes": 60},
     "analysis": {"ocr_hint": False, "keyframe_drop_thr": 0.10, "max_keyframes": 64, "sift_keyframes": 4},
 }
-SIFT_DEFAULTS = {"keypoints": 300, "min_inliers": 15, "ratio": 0.75}
+SIFT_DEFAULTS = {"keypoints": 300, "min_inliers": 12, "ratio": 0.75}
 
 
 def _fail(rule: str, message: str):

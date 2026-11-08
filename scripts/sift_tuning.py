@@ -106,7 +106,7 @@ def main() -> None:
         print(f"{name:10} found {len(inl):3}/{len(originals)}  inliers p10 {p10:3} p50 {statistics.median(inl) if inl else 0:5.0f}  kind {common} ({kinds.count(common) if kinds else 0})")
     fs = sorted(false_inl)
     print(f"false matches (min_inliers 6): {len(fs)}  inliers max {fs[-1] if fs else 0}  p99 {fs[int(len(fs) * 0.99) - 1] if fs else 0}")
-    for floor in (10, 12, 15, 20, 25):
+    for floor in (10, 12, 15, 20):
         tp = sum(sum(1 for x in v if x >= floor) for v in true_inl.values())
         fp = sum(1 for x in fs if x >= floor)
         print(f"  min_inliers {floor:2}: true {tp}/{len(originals) * 5}  false {fp}")
@@ -126,7 +126,7 @@ def main() -> None:
         img = transforms(rgb, rng)["crop"]
         sets = sets_of(img)
         t0 = time.time()
-        features.match(conn, sets, (img.shape[1], img.shape[0]), {**SIFT, "min_inliers": 15})
+        features.match(conn, sets, (img.shape[1], img.shape[0]), {**SIFT, "min_inliers": 12})
         times.append(time.time() - t0)
     print(f"scale: {stored} stored feature sets, match p50 {statistics.median(times):.2f} s  max {max(times):.2f} s")
 

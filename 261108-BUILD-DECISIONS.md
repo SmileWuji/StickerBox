@@ -94,3 +94,19 @@ under "For the owner", continue. Each entry says what to change if the owner dis
     (`STICKER_BOX_DECODE_SECONDS`), animations worked on at 1024 px and stills at 1600 px.
 25. **Category names are letters, digits, `_` and `-`** (any script); policy descriptions are one
     line. Agent-written text in README.md has HTML neutralised and backticks turned into quotes.
+
+## M6
+
+26. **SIFT verification fits a similarity transform, not a homography,** with an inlier spread of
+    at least 4% of both pictures and a scale within 0.05 to 20. Numbers in
+    `261108-SIFT-TUNING.md`. Default `min_inliers` is 12 (was 15).
+27. **Animated items store features for up to 4 keyframes** (`analysis.sift_keyframes`), evenly
+    spaced, so a GIF costs at most four feature sets.
+28. **SIFT matches are computed at `stage`** and reused at `commit` (pHash matches are recomputed
+    at commit). An item stored by another session between the two is not SIFT-matched against
+    this one until `reindex`. Accepted: relations are reported, not acted on.
+29. **Relation kinds from SIFT:** `duplicate`, `crop_of` / `contains` (inverse pair), `rotation`,
+    `overlap`. `duplicate` counts as a duplicate for `on_duplicate: reject`, like pHash's
+    `near_duplicate`.
+30. **The M6 exit criterion is met with a caveat:** crops 77% and rotations 100% are linked, but
+    about 6% of inserts also get a spurious relation to an unrelated image. Flagged for the owner.
