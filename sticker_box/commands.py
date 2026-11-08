@@ -329,6 +329,15 @@ def cmd_vocab_unlock(args) -> dict:
     return _set_mode(args, "open")
 
 
+def cmd_search(args) -> dict:
+    from . import search
+
+    animated = True if args.animated else False if args.static else None
+    result = search.search(open_box(args), " ".join(args.query), args.tag or [], args.category, animated, args.license, args.limit)
+    result["_text"] = search.as_text(result)
+    return result
+
+
 def register(sub: argparse._SubParsersAction, common: argparse.ArgumentParser) -> None:
     def add(name: str, handler, help_text: str, parent=sub):
         p = parent.add_parser(name, parents=[common], help=help_text, description=help_text)
@@ -454,3 +463,13 @@ def register(sub: argparse._SubParsersAction, common: argparse.ArgumentParser) -
     p.add_argument("--threshold", type=float, default=0.6, help="similarity from 0 to 1 (default 0.6)")
     add("lock", cmd_vocab_lock, "lock the vocabulary: new tags only through `tag new`", vsub)
     add("unlock", cmd_vocab_unlock, "reopen the vocabulary", vsub)
+
+    p = add("search", cmd_search, "find items by tags, aliases, on-image text, descriptions and notes")
+    p.add_argument("query", nargs="*", help="words; any of them may match (category=value matches one tag)")
+    p.add_argument("--tag", action="append", metavar="CATEGORY=VALUE", help="only items with this tag")
+    p.add_argument("--category", help="only items with a tag in this category")
+    kind = p.add_mutually_exclusive_group()
+    kind.add_argument("--animated", action="store_true")
+    kind.add_argument("--static", action="store_true")
+    p.add_argument("--license", help="only items whose licence contains this")
+    p.add_argument("--limit", type=int, default=10)

@@ -74,12 +74,13 @@ Tick a box in the same commit as the work. Bold lines are a milestone's exit cri
 - [x] **Bootstrapping a vocabulary from 50 stickers, merging the duplicates `vocab review` finds, and locking it works end to end, and `README.md` reads as a usable manual**
 
 ### M5. Search
-- [ ] `search <query>`: terms split on space and `|`; matches tag values and aliases, OCR text, description, note; `LIKE` for short Chinese terms
-- [ ] Ranking: exact tag > alias > text > description and note; ties by newest
-- [ ] Filters: `--tag category=value`, `--category`, `--animated`, `--license`, `--limit`; expired items flagged
-- [ ] Results carry the absolute file path, tags and note, so a caller can send directly
-- [ ] **On the tagged box from M4, ten realistic queries (two-character Chinese included) return sensible top-5 results**
+- [x] `search <query>`: terms split on space and `|`; matches tag values and aliases, OCR text, description, note; `LIKE` for short Chinese terms
+- [x] Ranking: exact tag > alias > text > description and note; ties by newest
+- [x] Filters: `--tag category=value`, `--category`, `--animated`, `--license`, `--limit`; expired items flagged
+- [x] Results carry the absolute file path, tags and note, so a caller can send directly
+- [x] **On the tagged box from M4, ten realistic queries (two-character Chinese included) return sensible top-5 results**
 - [ ] Security code review of M0 to M5 (§12); findings fixed or recorded
+  - running (subagent, 2026-11-08); next: fix or record its findings
 
 ### M6. Local features (gallery)
 - [ ] SIFT extraction, capped keypoints, uint8 descriptors and float32 keypoints into `feature` in `box.sqlite3`; only when the policy enables it
