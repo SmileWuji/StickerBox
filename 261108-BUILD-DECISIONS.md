@@ -110,3 +110,14 @@ under "For the owner", continue. Each entry says what to change if the owner dis
     `near_duplicate`.
 30. **The M6 exit criterion is met with a caveat:** crops 77% and rotations 100% are linked, but
     about 6% of inserts also get a spurious relation to an unrelated image. Flagged for the owner.
+
+## M7
+
+31. **Transfer re-analyses the file in the destination** instead of copying the source's
+    analysis: it takes a fraction of a second and always matches the destination's analysis
+    policy. Licence and source carry over; the source's text, description, note and the fields
+    the destination declares become defaults for `commit` (explicit options win); tags are only
+    shown as hints, since vocabularies differ. Only stored items can be transferred.
+32. **`check` reports and never changes anything.** It lists item problems against the current
+    policy, missing and changed (`--deep`) files, orphan files in `persistent/`, stale features
+    and broken staged files; `--strict` exits 1 when anything is reported.

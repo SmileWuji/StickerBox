@@ -95,10 +95,11 @@ Tick a box in the same commit as the work. Bold lines are a milestone's exit cri
 - [x] Retention: `expires_at` set at commit; expired items stay readable and are flagged (landed with M3)
 - [x] `clean` (staged files past the grace period, and expired items), `clean --all` (landed with M3)
 - [x] `--auto-cleanup` on writes: expired first, then oldest until under the limit; everything removed is listed (landed with M3)
-- [ ] `stage --from <box> <ref>`: staged in the destination with analysis, licence and source carried over; validated at `commit`
-- [ ] `check`: every item against the current policy, orphan files, missing files, stale features
-- [ ] **A buffer fills, refuses a write loudly, recovers with `--auto-cleanup`, and an item transferred from it into a sticker box passes only once the required tags are given**
+- [x] `stage --from <box> <ref>`: staged in the destination (analysed again under its policy), licence and source carried over, text, description and note as commit defaults, tags as hints; validated at `commit`
+- [x] `check`: every item against the current policy, orphan files, missing files, stale features
+- [x] **A buffer fills, refuses a write loudly, recovers with `--auto-cleanup`, and an item transferred from it into a sticker box passes only once the required tags are given**
 - [ ] Security code review of M6 and M7 (§12); findings fixed or recorded
+  - running (subagent); next: fix or record its findings in `261108-SECURITY-REVIEW-M7.md`
 
 ### M8. Skills, docs, smoke
 - [ ] `skills/` (§10): `sticker-box` usage, one skill per `telegram-sticker` tag category including the OCR skill with its JSON shape and examples, `vocab-cleanup`, `gallery-maintenance`

@@ -91,7 +91,11 @@ def commit(box, ref: str, tags: list[str], defines: list[tuple[str, str]], value
     if kind == "item":
         raise BoxError("already_stored", f"{sha} is already stored; use `edit` to change it", ref=sha)
     sidecar = stage.ensure_fresh(box, policy, sha)
-    merged = {"license": sidecar.get("license"), "source": sidecar.get("source"), **{k: v for k, v in values.items() if v is not None}}
+    origin = sidecar.get("origin") or {}
+    defaults = {"license": sidecar.get("license"), "source": sidecar.get("source")}
+    defaults.update({k: origin.get(k) for k in ("text", "description", "note") if origin.get(k) is not None})
+    defaults.update({k: v for k, v in (origin.get("fields") or {}).items() if k in policy["fields"]})
+    merged = {**defaults, **{k: v for k, v in values.items() if v is not None}}
     plan = vocab.plan(box.conn, policy, tags, defines, box.language)
     problems = rules.check_file(policy["files"], sidecar["media"])
     problems += field_problems(policy, merged)

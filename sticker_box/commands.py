@@ -353,6 +353,15 @@ def cmd_reindex(args) -> dict:
     return result
 
 
+def cmd_check(args) -> dict:
+    from . import check
+
+    result = check.check(open_box(args), deep=args.deep)
+    if args.strict and not result["ok"]:
+        result["_exit"] = 1
+    return result
+
+
 def register(sub: argparse._SubParsersAction, common: argparse.ArgumentParser) -> None:
     def add(name: str, handler, help_text: str, parent=sub):
         p = parent.add_parser(name, parents=[common], help=help_text, description=help_text)
@@ -491,3 +500,7 @@ def register(sub: argparse._SubParsersAction, common: argparse.ArgumentParser) -
     p = add("dupes", cmd_dupes, "groups of duplicates, crops, rotations and frames, each with a suggested keeper")
     p.add_argument("--kind", action="append", help="only these relation kinds (near_duplicate, duplicate, crop_of, contains, rotation, overlap, frame_of, has_frame, shares_frames)")
     add("reindex", cmd_reindex, "rebuild keyframes, local features and relations from the stored files (slow on big boxes)")
+
+    p = add("check", cmd_check, "audit items against the policy and the directory against the index; changes nothing")
+    p.add_argument("--deep", action="store_true", help="also re-hash every file")
+    p.add_argument("--strict", action="store_true", help="exit 1 when anything is reported")
