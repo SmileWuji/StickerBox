@@ -25,12 +25,12 @@ from disk alone:
 Tick a box in the same commit as the work. Bold lines are a milestone's exit criterion.
 
 ### M0. Scaffold
-- [ ] `pyproject.toml` (Python 3.12, console script `sticker-box`), package `sticker_box/`, `pytest.ini`
-- [ ] `LICENSE`, `.gitignore` (including `testdata/private/`)
-- [ ] CLI skeleton: global `--box`, `--json`; error envelope and exit codes (§4)
-- [ ] Test data layout (§11): `testdata/generic/` committed, `testdata/private/` git-ignored and filled by `scripts/link-private-testdata.sh` from the owner's corpora; private tests skip when it is empty
-- [ ] Test helpers: synthetic image factory (static WebP, animated WebP, WebM, GIF, PNG, JPG), temp box fixture
-- [ ] `README.md` for humans (install, quick start); this file kept current
+- [x] `pyproject.toml` (Python 3.12, console script `sticker-box`, pytest settings), package `sticker_box/`
+- [x] `LICENSE`, `.gitignore` (including `testdata/private/`)
+- [x] CLI skeleton: global `--box`, `--json`; error envelope and exit codes (§4)
+- [x] Test data layout (§11): `testdata/generic/` committed, `testdata/private/` git-ignored and filled by `scripts/link-private-testdata.sh` from the owner's corpora; private tests skip when it is empty
+- [x] Test helpers: synthetic image factory (static WebP, animated WebP, WebM, GIF, PNG, JPG) in `tests/factory.py`; the temp box fixture lands with `init` in M1
+- [x] `README.md` for humans (install, quick start); this file kept current
 - [ ] **`pip install -e . && sticker-box --help && python3 -m pytest -q` all work on a fresh clone**
 
 ### M1. Instance, schema, policy
@@ -329,7 +329,10 @@ Adding tags:
 - Comments only where the code cannot say it. Commit messages: one-line summary, then Problem,
   Solution, Testing sections in brief prose.
 - Dated notes (`YYMMDD-XXX.md`) for measurements and decisions; the newest wins.
-- This workspace sits on an NTFS mount: `git config` writes fail, so edit `.git/config` by hand.
+- This workspace sits on an NTFS mount: `git config` writes fail, so edit `.git/config` by hand;
+  a venv cannot be created on it, so the dev venv is `~/.venvs/sticker-box`
+  (`--system-site-packages`, then `pip install -e . --no-deps --no-build-isolation`); the pytest
+  cache plugin is off for the same reason. Run tests with `~/.venvs/sticker-box/bin/python -m pytest -q`.
 
 ## 12. Security reviews
 
