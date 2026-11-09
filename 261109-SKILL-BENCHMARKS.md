@@ -1,6 +1,7 @@
 # Skill benchmarks (2026-11-09)
 
-Status: in progress. Sections marked *pending* are filled as the runs finish.
+Status: paused on 2026-11-09 with the host turned off; resume steps are in `AGENTS.md` under
+"Paused 2026-11-09". Sections marked *pending* are filled as the runs finish.
 
 ## 1. Question
 

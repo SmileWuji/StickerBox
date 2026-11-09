@@ -201,6 +201,29 @@ the winning wording ships for every model; `tag-character-series`, `vocab-cleanu
 skills are smoke-tested with Sonnet only. Dataset names never appear in the repository; code
 names live in the git-ignored `testdata/private/CODENAMES.txt`.
 
+#### Paused 2026-11-09 (host turned off): how to resume
+
+Done so far: steps 0 to 3, 4.1 to 4.4; the tag-text dev runs are partly complete. Everything
+needed is on disk: label files, caches and the reference box under `testdata/private/bench/`
+(git-ignored), the report so far in `261109-SKILL-BENCHMARKS.md`, friction notes in
+`testdata/private/bench/friction.md`.
+
+1. Start Ollama with the existing model folder (no download needed):
+   `OLLAMA_MODELS=../OCR-Benchmark/.ollama-models ollama serve` (background),
+   then check `curl -s 127.0.0.1:11434/api/tags` lists `qwen3.5:9b`.
+2. Finish the tag-text dev runs; the cache skips everything already done (about 10 minutes):
+   `for v in v0 v1 v2 v3 v4 v5 v6 v4@1024 v8; do ~/.venvs/sticker-box/bin/python scripts/bench_skills/qwen.py run --skill tag-text --variant $v --split dev; done`
+   then `... qwen.py score --skill tag-text --variants v0,v1,v2,v3,v4,v5,v6,v4@1024,v8 --split dev`.
+   At pause: v0 209, v1 and v2 192, v3 to v6 and v4@1024 239 of the 243 dev inputs; v8 not
+   started. Stop a run by PID (`pgrep -f "[b]ench_skills/qwen.py"`), never with a `pkill -f`
+   pattern that matches your own shell.
+3. Continue from 4.5 below: read the dev table and the errors, wave 3 (combine the levers that
+   help, decide on v8 = v4 plus the text rules agents asked for, ablate), winner once on test.
+4. Then 4.6 and 4.7 (emotion and visual: v0 on dev, waves from errors, winner on test), 4.8
+   (copy the winning wording into the skills; a fresh Sonnet runs the test split on original vs
+   tuned wording), 4.9 (Sonnet smoke tests, including the two policy tasks), 4.10 (finish the
+   report), 5.
+
 - [x] 0.1 Manifest (path, size, sha256) of all four sticker sources written to the scratchpad
 - [x] 0.2 Packs moved into `../GuidedSticker-Project-TestData-Consolidated/`
 - [x] 0.3 Manifest verified against the consolidated directory (2,975 files, 33 packs); emptied source folders removed with `rmdir` only
