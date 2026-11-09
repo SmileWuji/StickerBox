@@ -221,7 +221,7 @@ names live in the git-ignored `testdata/private/CODENAMES.txt`.
 - [x] 4.4 Ollama up with `qwen3.5:9b`; Qwen harness built; Qwen noise floor measured
   - Ollama runs with `OLLAMA_MODELS=../OCR-Benchmark/.ollama-models` (model already there); harness `scripts/bench_skills/qwen.py`. tag-text v0 on dev: answers differ on 1 of 78 between runs (with the OCR hint passed, as in production; 0 of 78 without it)
 - [ ] 4.5 Qwen sweep `tag-text` (dev), winner on test
-  - wave 1 (v1 to v6, one lever each, from v0's errors) running on dev; more dev inputs arrive with the Sonnet reference texts
+  - wave 1 (v1 to v6) on the human dev labels: flat (has-text 0.885 to 0.897, n=78; only v4 "a lone watermark counts" +1). Dominant error: 5 of 6 watermark-only stickers read as no text by every variant. Wave 2a running: v4 at 768 and 1024 px, v7 (v4 + check edges and corners). Transcription scores wait for the Sonnet reference (only 11 human transcriptions on dev)
 - [ ] 4.6 Qwen sweep `tag-emotion` (dev), winner on test
 - [ ] 4.7 Qwen sweep `tag-visual` (dev), winner on test
 - [ ] 4.8 Winning wording shipped in the skills; Sonnet original-vs-tuned run on test

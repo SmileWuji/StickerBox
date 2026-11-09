@@ -79,17 +79,26 @@ def inputs(skill: str, split: str) -> list[dict]:
     return out
 
 
-def image_b64(item: dict) -> str:
+def spec(variant: str) -> tuple[str, int]:
+    """A variant may carry an image size: `v4@1024` is template v4 sent at 1024 px."""
+    name, _, side = variant.partition("@")
+    return name, int(side) if side else SIDE
+
+
+def image_b64(item: dict, side: int = SIDE) -> str:
     sheets = BENCH / "sheets"
     sheets.mkdir(parents=True, exist_ok=True)
-    cached = sheets / (hashlib.sha256(item["id"].encode()).hexdigest()[:16] + ".jpg")
+    suffix = "" if side == SIDE else f"-{side}"
+    cached = sheets / (hashlib.sha256(item["id"].encode()).hexdigest()[:16] + suffix + ".jpg")
     if not cached.is_file():
         result = analysis.analyze(Path(item["path"]), policy.DEFAULTS["analysis"])
         if result.info.animated and len(result.keyframes) > 1:
             contact.write(contact.sheet(result.sheet_frames()), cached)
         else:
             im = Image.fromarray(result.keyframes[0].rgb)
-            im.thumbnail((SIDE, SIDE))
+            if max(im.size) < side:
+                im = im.resize((round(im.width * side / max(im.size)), round(im.height * side / max(im.size))), Image.Resampling.LANCZOS)
+            im.thumbnail((side, side))
             im.save(cached, "JPEG", quality=92)
     return base64.b64encode(cached.read_bytes()).decode()
 
@@ -116,7 +125,8 @@ def ocr_hint(item: dict) -> str:
 
 
 def build_messages(skill: str, variant: str, item: dict) -> list[dict]:
-    template = (VARIANTS / skill / f"{variant}.md").read_text(encoding="utf-8")
+    name, side = spec(variant)
+    template = (VARIANTS / skill / f"{name}.md").read_text(encoding="utf-8")
     system = template.replace("{VOCABULARY}", vocabulary(FIELD[skill]) if FIELD[skill] else "")
     user = "Answer with the JSON only."
     if skill == "tag-text":
@@ -124,7 +134,7 @@ def build_messages(skill: str, variant: str, item: dict) -> list[dict]:
         user = f"ocr_hint from stage: {hint if hint else '(nothing found)'}\n" + user
     if skill != "tag-text" and item.get("context_text"):
         user = f"Text on the sticker: {item['context_text']}\n" + user
-    return [{"role": "system", "content": system}, {"role": "user", "content": user, "images": [image_b64(item)]}]
+    return [{"role": "system", "content": system}, {"role": "user", "content": user, "images": [image_b64(item, side)]}]
 
 
 def call(messages: list[dict]) -> tuple[str, float, str]:
