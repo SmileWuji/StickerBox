@@ -188,6 +188,40 @@ Not scheduled; pick up when the owner asks.
       baseline in a dated note, then decide which indexes or algorithm changes are worth it.
       Suggested by the owner 2026-11-09; to be done when the backlog is cleaned up.
 
+### Backlog execution (started 2026-11-09)
+
+Plan approved by the owner; the full plan is kept in the session's plan file, and the steps
+below are self-describing. Tick each box in the commit that finishes it; add a "done / next"
+line under a half-done box. Long runs cache every model call to JSONL under
+`testdata/private/bench/` (git-ignored), so they resume instead of restarting. Decisions for
+this run: Sonnet runs as a fresh subagent (no API key); Sonnet labels ~250 stickers by following
+the skills, which is also its benchmark, and 10% are checked and corrected by the main agent;
+Qwen3.5-9B (local Ollama) is prompt-optimised for `tag-text`, `tag-emotion`, `tag-visual`, and
+the winning wording ships for every model; `tag-character-series`, `vocab-cleanup` and the tool
+skills are smoke-tested with Sonnet only. Dataset names never appear in the repository; code
+names live in the git-ignored `testdata/private/CODENAMES.txt`.
+
+- [ ] 0.1 Manifest (path, size, sha256) of all four sticker sources written to the scratchpad
+- [ ] 0.2 Packs moved into `../GuidedSticker-Project-TestData-Consolidated/`
+- [ ] 0.3 Manifest verified against the consolidated directory (2,975 files, 33 packs); emptied source folders removed with `rmdir` only
+- [ ] 0.4 `testdata/private` relinked to the consolidated directory, code names updated; private tests pass
+- [ ] 1 Skill command check test (`tests/test_skill_commands.py`), stale commands fixed
+- [ ] 2 `buffer-triage` skill written and listed in `skills/README.md`
+- [ ] 3.1 `scripts/bench_ops.py` built per `261109-OPS-BENCHMARK-DESIGN.md`
+- [ ] 3.2 Baseline run on `/tmp` and the NTFS mount; `261109-OPS-BASELINE.md` written
+- [ ] 3.3 Small fixes for missed targets re-measured and recorded (or deferred with reasons)
+- [ ] 4.1 Benchmark sample drawn (~250, dev 150 / test 100) and existing human gold mapped
+- [ ] 4.2 Sonnet labelling run (sequential batches) and vocabulary cleanup; Sonnet noise-floor re-run
+- [ ] 4.3 10% checked and corrected by the main agent; Sonnet accuracy per field computed
+- [ ] 4.4 Ollama up with `qwen3.5:9b`; Qwen harness built; Qwen noise floor measured
+- [ ] 4.5 Qwen sweep `tag-text` (dev), winner on test
+- [ ] 4.6 Qwen sweep `tag-emotion` (dev), winner on test
+- [ ] 4.7 Qwen sweep `tag-visual` (dev), winner on test
+- [ ] 4.8 Winning wording shipped in the skills; Sonnet original-vs-tuned run on test
+- [ ] 4.9 Sonnet smoke tests: `tag-character-series`, `vocab-cleanup`, `sticker-box`, `gallery-maintenance`, `buffer-triage`
+- [ ] 4.10 Skill benchmark report written (dated note)
+- [ ] 5 Backlog boxes ticked, owner section and decisions updated
+
 ## 1. Scope
 
 In:
