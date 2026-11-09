@@ -34,9 +34,12 @@ shipped skills, not a fair model-versus-model comparison.
 |---|---|---|
 | Qwen | `tag-text` v0, dev, without the OCR hint (n=78) | 0 answers differ |
 | Qwen | `tag-text` v0, dev, with the OCR hint (n=78) | 1 answer differs (1.3%) |
+| Qwen | `tag-emotion` v0, dev (n=165) | 7 answers differ (4.2%); F1 against the reference 0.410 and 0.414 |
+| Qwen | `tag-visual` v0, dev (n=165) | 20 answers differ (12.1%); F1 0.448 and 0.450 |
 | Sonnet | batch of 24 re-labelled by a fresh agent on a snapshot of the box | has-text 24/24, transcriptions identical 9/9; tag F1 between the runs: emotion 0.79, visual 0.68, character 0.86, series 0.67 |
 
-Reading text is stable for both models. Choosing tags is not: two Sonnet runs agree only about
+Qwen at temperature 0 is close to deterministic, so its score differences of 0.01 F1 or one
+sticker are about the noise. Reading text is stable for both models. Choosing tags is not: two Sonnet runs agree only about
 0.7 to 0.8 on emotion and visual tags, mostly by naming the same thing differently. That is the
 ceiling for any agreement score against Sonnet's labels.
 
