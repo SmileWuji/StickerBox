@@ -46,7 +46,8 @@ def check(box, deep: bool = False) -> dict:
         for p in vocab.cardinality(policy, labels):
             add(p)
     known = {r["file"] for r in rows if paths.stored_rel(r)}
-    orphans = sorted(str(p.relative_to(box.root)) for p in box.persistent.rglob("*") if p.is_file() and str(p.relative_to(box.root)) not in known)
+    candidates = sorted(str(p.relative_to(box.root)) for p in box.persistent.rglob("*") if p.is_file() and str(p.relative_to(box.root)) not in known)
+    orphans = [rel for rel in candidates if conn.execute("SELECT 1 FROM item WHERE file = ?", (rel,)).fetchone() is None]
     stale, featureless = [], []
     if policy["duplicates"]["sift"]:
         stale = [r["sha256"] for r in conn.execute(
@@ -76,5 +77,7 @@ def check(box, deep: bool = False) -> dict:
         "stale_features": stale,
         "items_without_features": len(featureless),
         "broken_staged": staged_broken,
-        "hint": "orphan files and broken staged files are safe to delete; `reindex` refreshes stale features; fix item problems with `edit`" if (problems or orphans or stale or staged_broken) else None,
+        "hint": ("broken staged files go with `clean --all`; orphan files in persistent/ are not in the index (report them to the "
+                 "box's owner, who can delete them by hand); `reindex` refreshes stale features; fix item problems with `edit`")
+                if (problems or orphans or stale or staged_broken) else None,
     }

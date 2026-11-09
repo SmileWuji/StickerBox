@@ -38,7 +38,9 @@ def load_sidecar(box, sha: str) -> dict:
     if data.get("file") not in {paths.staged_name(sha, ext) for ext in paths.EXTS}:
         raise _corrupt(sha, "wrong file name")
     m = data.get("media")
-    if not isinstance(m, dict) or not isinstance(data.get("keyframes"), list) or not data["keyframes"]:
+    needed = {"format": str, "width": int, "height": int, "animated": bool, "frames": int, "bytes": int}
+    if not isinstance(m, dict) or any(not isinstance(m.get(k), t) for k, t in needed.items()) \
+            or not isinstance(data.get("keyframes"), list) or not data["keyframes"]:
         raise _corrupt(sha, "no analysis")
     try:
         [int(k["phash"], 16) for k in data["keyframes"]]
@@ -58,7 +60,18 @@ def write_sidecar(box, data: dict) -> None:
 def staged_file(box, sidecar: dict) -> Path:
     sha = paths.check_sha(sidecar["sha256"])
     ext = str(sidecar["file"]).rsplit(".", 1)[-1]
-    return box.temporary / paths.staged_name(sha, ext)
+    path = box.temporary / paths.staged_name(sha, ext)
+    if path.is_symlink():
+        raise _corrupt(sha, "the staged file is a symbolic link")
+    return path
+
+
+def remove_extras(box, sha: str) -> None:
+    """Every regular file temporary/ holds for `sha`; anything else planted there is left alone."""
+    paths.check_sha(sha)
+    for extra in box.temporary.glob(f"{sha}.*"):
+        if extra.is_symlink() or extra.is_file():
+            extra.unlink(missing_ok=True)
 
 
 def requirements(policy: dict) -> dict:
@@ -149,17 +162,19 @@ def copy_in(source: Path, dest: Path, box, nofollow: bool = False) -> int:
     is stored. With nofollow (files taken from another box) the file itself may not be a symlink."""
     import stat
 
-    flags = os.O_RDONLY | (os.O_NOFOLLOW if nofollow else 0)
+    flags = os.O_RDONLY | os.O_NONBLOCK | (os.O_NOFOLLOW if nofollow else 0)
     try:
         fd = os.open(source, flags)
     except FileNotFoundError:
         raise BoxError("not_found", f"{source} is not a file") from None
     except OSError as err:
         raise BoxError("not_found", f"cannot read {source}: {err.strerror}") from None
+    st = os.fstat(fd)
+    if not stat.S_ISREG(st.st_mode):
+        os.close(fd)
+        raise BoxError("not_found", f"{source} is not a regular file")
+    os.set_blocking(fd, True)
     with os.fdopen(fd, "rb") as src:
-        st = os.fstat(src.fileno())
-        if not stat.S_ISREG(st.st_mode):
-            raise BoxError("not_found", f"{source} is not a regular file")
         if st.st_size > media.MAX_FILE_BYTES:
             raise BoxError("file_too_large", f"{source.name} is {st.st_size} bytes; the tool reads at most {media.MAX_FILE_BYTES}", bytes=st.st_size)
         _temporary_room(box, st.st_size)
@@ -213,8 +228,7 @@ def stage_file(box, path: Path, license: str | None = None, source: str | None =
     try:
         sidecar = analyse_into_sidecar(box, policy, sha, file_name, {"name": path.name, "license": license, "source": source, "origin": None})
     except BaseException:
-        for leftover in box.temporary.glob(f"{sha}.*"):
-            leftover.unlink(missing_ok=True)
+        remove_extras(box, sha)
         raise
     return {**report(box, policy, sidecar, "staged"), "commit_would_remove": planned or None}
 
@@ -241,9 +255,7 @@ def ensure_fresh(box, policy: dict, sha: str) -> dict:
 
 def remove(box, sha: str) -> None:
     """Removes every staged file of `sha`, whether or not its sidecar is intact."""
-    paths.check_sha(sha)
-    for extra in box.temporary.glob(f"{sha}.*"):
-        extra.unlink(missing_ok=True)
+    remove_extras(box, sha)
 
 
 def listing(box) -> list[dict]:

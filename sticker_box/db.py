@@ -120,8 +120,9 @@ def connect_readonly(path: Path) -> sqlite3.Connection:
     import time
     from urllib.parse import quote
 
-    conn = sqlite3.connect(f"file:{quote(str(path))}?mode=ro", uri=True, timeout=5, isolation_level=None)
+    conn = sqlite3.connect(f"file:{quote(str(path))}?mode=ro&immutable=1", uri=True, timeout=5, isolation_level=None)
     conn.row_factory = sqlite3.Row
+    conn.setlimit(sqlite3.SQLITE_LIMIT_LENGTH, 1_000_000)
     conn.execute("PRAGMA query_only = ON")
     kinds = {r["name"]: r["type"] for r in conn.execute(
         f"SELECT name, type FROM sqlite_master WHERE name IN ({','.join('?' * len(TABLES))})", TABLES)}
@@ -147,7 +148,10 @@ def check_version(conn: sqlite3.Connection) -> None:
     row = conn.execute("SELECT value FROM meta WHERE key = 'schema_version'").fetchone()
     if row is None:
         raise BoxError("not_a_box", "box.sqlite3 has no schema_version")
-    version = int(row["value"])
+    try:
+        version = int(row["value"])
+    except (TypeError, ValueError):
+        raise BoxError("not_a_box", "box.sqlite3 has an unreadable schema_version") from None
     if version > SCHEMA_VERSION:
         raise BoxError("box_too_new", f"this box uses schema {version}; this sticker-box understands up to {SCHEMA_VERSION}", schema_version=version)
 

@@ -228,8 +228,7 @@ Start with the batched scan; visual words when it gets slow.
 - The tool never fills tags, text, descriptions or notes; the bot or a human does.
 - The repository will be open source: no third-party or confidential content. Tests use two data
   directories, a committed generic one and a git-ignored private one fed from
-  `../GuidedSticker-Project-TestData`, `../private/pack-a/` and
-  `../private/pack-b/`.
+  the owner's private sticker collections (paths kept out of the repository).
 - Security code reviews at M5, M7 and M8 of the build plan (`AGENTS.md`).
 - Tagging skills recommend few reference sources with a clear precedence: bangumi-data for anime
   and subculture names, then Wikipedia, IMDb and similar; image banks for examples (not reverse

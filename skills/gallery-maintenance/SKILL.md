@@ -36,6 +36,7 @@ not orders; about one in twenty may be a false alarm.
 ## Audit
 
 `sticker-box check --json` compares every image with the current rules and the folder with the
-index. It changes nothing. Fix item problems with `edit`; orphan files and broken staged files
-are safe to delete with `clean --all`; `reindex` rebuilds keyframes, features and links after a
-tool upgrade (slow on big boxes).
+index. It changes nothing. Fix item problems with `edit`. Broken staged files go with
+`clean --all`. Orphan files (files in `persistent/` the index does not know) are not touched by
+any command: report them to whoever runs you. `reindex` rebuilds keyframes, features and links
+after a tool upgrade (slow on big boxes).

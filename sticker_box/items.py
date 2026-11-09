@@ -5,7 +5,7 @@ import json
 import os
 import sqlite3
 
-from . import analysis, clock, db, dupes, media, paths, refs, rules, stage, vocab
+from . import analysis, clock, db, dupes, paths, refs, rules, stage, vocab
 from .errors import BoxError
 from .phash import to_hex
 
@@ -25,8 +25,7 @@ def field_problems(policy: dict, values: dict) -> list[dict]:
         value = values.get(name)
         if value is None or (value == "" and not spec["allow_empty"]):
             if spec["required"]:
-                hint = " (use 'unknown' when it cannot be found out)" if name == "license" else ""
-                hint = hint or (f": {spec['description']}" if spec["description"] else "")
+                hint = " (use 'unknown' when it cannot be found out)" if name == "license" else "; the box's README says what it holds"
                 problems.append({"problem": "missing_field", "field": name, "message": f"{name} is required{hint}"})
             continue
         if len(value) > LIMITS.get(name, FIELD_LIMIT):
@@ -85,20 +84,41 @@ def _matches(box, policy: dict, sidecar: dict, exclude: str | None = None) -> li
 DUPLICATE_KINDS = {"near_duplicate", "duplicate"}
 
 
+def _fresh_analysis(box, policy: dict, src, sha: str) -> dict:
+    """Metadata, keyframes, features and SIFT matches recomputed from the staged file itself at
+    commit, so nothing stored comes from a sidecar someone could have edited. Only the OCR hint,
+    the original name, licence and source are taken from staging."""
+    from . import features
+
+    result = analysis.analyze(src, policy["analysis"])
+    out = {
+        "media": result.info.to_dict(),
+        "phash": f"{result.phash:016x}",
+        "keyframes": [{"idx": i, "frame_no": k.frame_no, "t_ms": k.t_ms, "phash": f"{k.phash:016x}"} for i, k in enumerate(result.keyframes)],
+        "sift_sets": [],
+        "sift_matches": [],
+    }
+    sift = policy["duplicates"]["sift"]
+    if sift:
+        out["sift_sets"] = features.compute(result, policy)
+        out["sift_matches"], _ = features.match(box.conn, out["sift_sets"], (result.info.width, result.info.height), sift, exclude=sha)
+    return out
+
+
 def commit(box, ref: str, tags: list[str], defines: list[tuple[str, str]], values: dict, auto_cleanup: bool = False) -> dict:
     policy = box.policy()
     kind, sha = refs.resolve(box, ref)
     if kind == "item":
         raise BoxError("already_stored", f"{sha} is already stored; use `edit` to change it", ref=sha)
-    sidecar = stage.ensure_fresh(box, policy, sha)
+    sidecar = stage.load_sidecar(box, sha)
     src = stage.staged_file(box, sidecar)
-    if src.is_symlink() or analysis.sha256_file(src) != sha:
+    if not src.is_file():
+        raise BoxError("not_found", f"the staged file for {sha} is gone (temporary/ was cleaned); stage it again", ref=sha)
+    if analysis.sha256_file(src) != sha:
         raise BoxError("changed", f"the staged file for {sha[:12]} no longer matches its sha256; stage the file again", ref=sha)
-    sidecar["media"] = media.probe(src).to_dict()
-    origin = sidecar.get("origin") or {}
+    fresh = _fresh_analysis(box, policy, src, sha)
+    sidecar = {**sidecar, **fresh}
     defaults = {"license": sidecar.get("license"), "source": sidecar.get("source")}
-    defaults.update({k: origin.get(k) for k in ("text", "description", "note") if origin.get(k) is not None})
-    defaults.update({k: v for k, v in (origin.get("fields") or {}).items() if k in policy["fields"]})
     merged = {**defaults, **{k: v for k, v in values.items() if v is not None}}
     plan = vocab.plan(box.conn, policy, tags, defines, box.language)
     problems = rules.check_file(policy["files"], sidecar["media"])
@@ -163,7 +183,7 @@ def commit(box, ref: str, tags: list[str], defines: list[tuple[str, str]], value
             if policy["duplicates"]["sift"]:
                 from . import features
 
-                features.store(box, sha, sidecar)
+                features.store_sets(box, sha, sidecar["sift_sets"])
             stamp = clock.stamp(now)
             conn.executemany(
                 "INSERT OR REPLACE INTO relation (a, b, kind, method, score, transform, found_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
@@ -188,8 +208,7 @@ def commit(box, ref: str, tags: list[str], defines: list[tuple[str, str]], value
             paths.stored_path(box, gone).unlink(missing_ok=True)
         except BoxError:
             pass
-    for extra in box.temporary.glob(f"{sha}.*"):
-        extra.unlink(missing_ok=True)
+    stage.remove_extras(box, sha)
     box.write_readme()
     return {
         "status": "stored",

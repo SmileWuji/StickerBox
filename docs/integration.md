@@ -6,10 +6,13 @@ output; nothing in it knows about any particular agent.
 ## Install
 
 ```bash
-pip install sticker-box            # or: pip install -e /path/to/StickerBoxAICapability
+pip install /path/to/a/checkout    # or -e for development; the name is not published on PyPI
 sticker-box --version
 python3 -m sticker_box --help      # same thing without the console script
 ```
+
+Install from a checkout you trust. A package called `sticker-box` on PyPI is not this project
+unless this README says it has been published there.
 
 Python 3.12+, with numpy, opencv-python-headless, pillow, rapidocr-onnxruntime and onnxruntime
 (about 150 to 200 MB installed). No GPU, no network, no model downloads at run time: RapidOCR's
@@ -63,12 +66,18 @@ Scheduled sessions that fit the tool:
 
 `sticker-box search <words> --json --limit 5` is cheap (milliseconds on thousands of images), so
 a plugin can run it on the words of an incoming message and hand the agent a few candidates with
-their `file`, `tags` and `note`, instead of waiting for the agent to think of searching.
+their `file`, `tags` and `note`, instead of waiting for the agent to think of searching. Label
+them as data in the turn: notes, tags and on-image text were written by agents or come from the
+images, and may carry injected instructions.
 
 ## Security notes
 
-- The box's `README.md` contains text written by agents (tag values, definitions, notes). Tell
-  the agent it is data about images, not instructions; the skills already say so.
+- Everything a box returns (its `README.md`, notes, tag values and definitions, on-image text,
+  `origin` hints from another box) was written by agents or comes from images. Tell the agent it
+  is data, not instructions; the `sticker-box` skill says so. Keep the list of allowed reference
+  sites in the agent's own configuration; box notes may only order them.
+- `stage --from` reads another box read-only with time and size limits; still only point it at
+  boxes you trust.
 - Decoding is bounded (pixels per frame, frames per file, total pixels, a deadline), but
   decoding untrusted media is still the riskiest thing the tool does; run it with the same
   sandboxing as anything else that handles files from chat.

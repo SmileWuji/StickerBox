@@ -35,8 +35,9 @@ def test_m7_buffer_fills_refuses_recovers_and_transfers(tmp_path, run_cli):
     (t,) = run_cli("stage", "--from", str(tmp_path / "buffer"), refs[1][:10], *stickers)["results"]
     assert t["origin"]["tags"] == ["tag=群友发的"] and t["license"] == "CC0"
     refused = run_cli("commit", t["ref"], *stickers, expect=1)
-    assert {p.get("field") or p.get("category") for p in refused["problems"]} == {"text", "emotion"}
-    out = run_cli("commit", t["ref"], *stickers, "--text", "", "--define", "emotion=开心", "高兴")
+    assert {p.get("field") or p.get("category") for p in refused["problems"]} == {"text", "note", "emotion"}
+    assert t["origin"]["note"] == "刚收到的第2张"
+    out = run_cli("commit", t["ref"], *stickers, "--text", "", "--note", t["origin"]["note"], "--define", "emotion=开心", "高兴")
     shown = run_cli("show", out["ref"], *stickers)
     assert shown["license"] == "CC0" and shown["note"] == "刚收到的第2张" and shown["tags"] == ["emotion=开心"]
     assert run_cli("show", refs[1], *buf)["ref"] == refs[1]

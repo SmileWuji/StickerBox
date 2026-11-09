@@ -14,6 +14,7 @@ from .errors import BoxError
 MAX_VALUE = 64
 MAX_DEFINITION = 500
 MAX_TAGS_PER_CHANGE = 64
+MAX_ALIASES = 32
 _STRIP = re.compile(r"[\s\W_]+", re.UNICODE)
 
 
@@ -192,7 +193,7 @@ def cardinality(policy: dict, labels: list[str], attempted: set[str] = frozenset
     for name, spec in policy["categories"].items():
         n = counts.get(name, 0)
         if spec["required"] and n == 0 and name not in attempted:
-            problems.append({"problem": "missing_category", "category": name, "message": f"at least one {name} tag is required" + (f" ({spec['description']})" if spec["description"] else "")})
+            problems.append({"problem": "missing_category", "category": name, "message": f"at least one {name} tag is required"})
         if not spec["multiple"] and n > 1:
             problems.append({"problem": "too_many_values", "category": name, "message": f"{name} takes one value, got {n}"})
     return problems
@@ -298,6 +299,8 @@ def add_alias(conn, category, value, alias) -> None:
     row = _require(conn, category, value)
     alias = check_value(alias)
     _free(conn, category, alias)
+    if conn.execute("SELECT COUNT(*) AS n FROM tag_alias WHERE tag_id = ?", (row["id"],)).fetchone()["n"] >= MAX_ALIASES:
+        raise BoxError("too_many_aliases", f"{category}={value} already has {MAX_ALIASES} aliases")
     conn.execute("INSERT INTO tag_alias (tag_id, category, alias) VALUES (?, ?, ?)", (row["id"], category, alias))
     log(conn, "alias", {"category": category, "value": value, "alias": alias})
 
@@ -330,6 +333,8 @@ def merge(conn, category, source, target) -> dict:
         "INSERT OR IGNORE INTO item_tag (sha256, tag_id) SELECT sha256, ? FROM item_tag WHERE tag_id = ?", (dst["id"], src["id"])
     ).rowcount
     conn.execute("UPDATE tag_alias SET tag_id = ? WHERE tag_id = ?", (dst["id"], src["id"]))
+    extra = conn.execute("SELECT alias FROM tag_alias WHERE tag_id = ? ORDER BY rowid LIMIT -1 OFFSET ?", (dst["id"], MAX_ALIASES - 1)).fetchall()
+    conn.executemany("DELETE FROM tag_alias WHERE tag_id = ? AND alias = ?", [(dst["id"], r["alias"]) for r in extra])
     conn.execute("UPDATE tag SET parent_id = ? WHERE parent_id = ?", (dst["id"], src["id"]))
     conn.execute("DELETE FROM tag WHERE id = ?", (src["id"],))
     conn.execute("INSERT OR IGNORE INTO tag_alias (tag_id, category, alias) VALUES (?, ?, ?)", (dst["id"], category, source))
@@ -394,8 +399,8 @@ def review(conn, policy, category: str | None = None, threshold: float = 0.6) ->
     for cat, group in by_cat.items():
         for i, j in _candidate_pairs(group):
             a, b = group[i], group[j]
-            names_a = [a["value"], *a["aliases"]]
-            names_b = [b["value"], *b["aliases"]]
+            names_a = [a["value"], *a["aliases"][:MAX_ALIASES]]
+            names_b = [b["value"], *b["aliases"][:MAX_ALIASES]]
             score = max(similarity(x, y) for x in names_a for y in names_b)
             if score >= threshold:
                 keep, drop = (a, b) if a["uses"] >= b["uses"] else (b, a)

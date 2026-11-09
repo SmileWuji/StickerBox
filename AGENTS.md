@@ -22,8 +22,29 @@ from disk alone:
 
 ## For the owner
 
-Decisions taken while you were away, each with its reason and how to undo it, are in
-`261108-BUILD-DECISIONS.md`. Nothing there is hard to reverse.
+State on 2026-11-09: M0 to M8 are done. 161 tests and `scripts/smoke.sh` pass. Read in this
+order:
+
+1. `261108-BUILD-DECISIONS.md`: every decision taken while you were away, each with its reason
+   and how to undo it. Nothing there is hard to reverse.
+2. `261108-ACCEPTANCE-M8.md`: a fresh agent with only `skills/` built a 12-sticker box from a
+   private pack; what confused it and what changed.
+3. `261108-SIFT-TUNING.md` and `261108-CORPUS-ANALYSIS.md`: measurements.
+4. `261108-SECURITY-REVIEW-M5.md`, `261108-SECURITY-REVIEW-M7.md`,
+   `261109-SECURITY-REVIEW-M8.md`: three reviews, every finding fixed with a test.
+
+Needs your call:
+
+- **Do not push this history as it is.** Early commits contain phrases transcribed from
+  third-party stickers (my mistake, in test data) and third-party pack folder names. The tree
+  is clean now. Squash or filter the history before the first push; details and commands are
+  at the end of `261109-SECURITY-REVIEW-M8.md`.
+- **SIFT false alarms (decision 30).** About 6% of gallery inserts also get a spurious relation
+  to an unrelated image. Relations are reported, never acted on; re-measure on real gallery
+  images.
+- **`report` and `link` behave the same** for `on_duplicate` (decision 12).
+- **QQBot wiring** is yours, per the plan: `docs/integration.md` lists install, environment,
+  exit codes, the skills to copy, and how to label box content as data in a plugin.
 
 ## Checklist
 
@@ -106,7 +127,7 @@ Tick a box in the same commit as the work. Bold lines are a milestone's exit cri
 - [x] `scripts/smoke.sh`: init each preset, stage, commit, search, frames, dupes, clean, against `testdata/generic/` and, when present, `testdata/private/`
 - [x] Integration notes for consumers: install line, environment variables, how to call it, what to put in a skill (`docs/integration.md`)
 - [x] **A new agent given only the skills and an empty box can bootstrap a sticker box from a corpus pack without help** (`261108-ACCEPTANCE-M8.md`; friction fixed)
-- [ ] Security code review of the whole tool and the skills (§12), plus a scan of the history for third-party content before the repository goes public
+- [x] Security code review of the whole tool and the skills (§12), plus a scan of the history for third-party content before the repository goes public (`261109-SECURITY-REVIEW-M8.md`; the history itself still needs the owner's rewrite)
 
 ## 1. Scope
 
@@ -138,9 +159,9 @@ Port ideas and small modules, never import from sibling repos:
 | `../260622-PerceptualHash-Brainstorming.txt` | SIFT/ORB + RANSAC for stills against animation frames |
 | `../GuidedStickerPostOffice/260919-Opus-Consultation.md` | short Chinese queries need `LIKE`, not FTS5 trigram |
 
-Private test corpora, never committed (§11): `../GuidedSticker-Project-TestData` (about 1,650
-WebP/WebM across many packs), `../private/pack-a/` and `../private/pack-b/`
-(120 WebP each, with a `Manifest`).
+Private test corpora, never committed (§11): the owner's sticker collections (about 1,900
+WebP/WebM files across many packs). Their paths live only in the git-ignored
+`testdata/private/sources.default`, read by `scripts/link-private-testdata.sh`.
 
 ## 3. A box on disk
 

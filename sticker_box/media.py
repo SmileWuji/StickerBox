@@ -9,6 +9,9 @@ MAX_FRAMES frames are refused rather than truncated (truncation would let durati
 evaded), the decoded pixels of one file are budgeted, and decoding has a deadline."""
 
 import os
+
+os.environ.setdefault("OPENCV_FFMPEG_CAPTURE_OPTIONS", "protocol_whitelist;file")
+
 import time
 import warnings
 from collections.abc import Iterator
@@ -30,6 +33,7 @@ STILL_SIDE = 1600
 ANIMATION_SIDE = 1024
 
 Image.MAX_IMAGE_PIXELS = MAX_PIXELS
+WEBM_FOURCC = {"VP80", "VP90", "AV01"}
 
 
 @dataclass
@@ -228,14 +232,27 @@ def _pillow_info(path: Path, fmt: str, size: int) -> MediaInfo:
         return MediaInfo(fmt, width, height, animated, n if animated else 1, duration, fps, None, False, size)
 
 
+def _capture(path: Path) -> cv2.VideoCapture:
+    """FFmpeg chooses the container by probing the bytes, not by the header this tool checked,
+    so the decoder FFmpeg actually picked is checked again after opening. The path is absolute
+    and only the file protocol is allowed, so names like `concat:x` mean nothing to FFmpeg."""
+    cap = cv2.VideoCapture(str(path.resolve()), cv2.CAP_FFMPEG)
+    if not cap.isOpened():
+        cap.release()
+        raise BoxError("undecodable", f"cannot decode {path.name}")
+    fourcc = int(cap.get(cv2.CAP_PROP_FOURCC)).to_bytes(4, "little").decode("latin1").upper()
+    if fourcc not in WEBM_FOURCC:
+        cap.release()
+        raise BoxError("unsupported_format", f"{path.name} decodes as {fourcc.strip() or 'unknown'}, not VP8, VP9 or AV1")
+    return cap
+
+
 def _video_info(path: Path, size: int) -> MediaInfo:
     with open(path, "rb") as fh:
         tracks = matroska_tracks(fh.read(1024 * 1024))
     deadline = Deadline(path.name)
-    cap = cv2.VideoCapture(str(path))
+    cap = _capture(path)
     try:
-        if not cap.isOpened():
-            raise BoxError("undecodable", f"cannot decode {path.name}")
         width, height = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         _pixels_ok(width, height, path.name)
         fps = cap.get(cv2.CAP_PROP_FPS) or None
@@ -282,7 +299,7 @@ def frames(path: Path, info: MediaInfo, side: int | None = None) -> Iterator[tup
     side = side or (ANIMATION_SIDE if info.animated else STILL_SIDE)
     deadline = Deadline(path.name)
     if info.format == "webm":
-        cap = cv2.VideoCapture(str(path))
+        cap = _capture(path)
         try:
             fps = cap.get(cv2.CAP_PROP_FPS)
             n = 0

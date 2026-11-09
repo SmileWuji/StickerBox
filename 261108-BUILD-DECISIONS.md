@@ -121,3 +121,15 @@ under "For the owner", continue. Each entry says what to change if the owner dis
 32. **`check` reports and never changes anything.** It lists item problems against the current
     policy, missing and changed (`--deep`) files, orphan files in `persistent/`, stale features
     and broken staged files; `--strict` exits 1 when anything is reported.
+
+## Final review (2026-11-09)
+
+33. **`commit` recomputes everything it stores from the staged file** (metadata, keyframes,
+    features, pHash and SIFT matches); the sidecar only supplies the OCR hint, the original name,
+    licence and source. Supersedes decision 28: SIFT matches are now current at commit, at the
+    cost of matching twice in a gallery.
+34. **`stage --from` carries only licence and source.** The source's text, description, note,
+    fields and tags are shown under `origin` as hints for the agent to check and copy. Supersedes
+    decision 31.
+35. **Everything a box returns is data.** The skills say so once, centrally; reference sources are
+    a fixed list in the tagging skill, and box notes may only order them.

@@ -293,6 +293,12 @@ def stage(box, policy: dict, result, sidecar: dict) -> None:
         sidecar["sift_note"] = f"local-feature matching stopped after {SIFT_SECONDS:g} s; crops and rotations may be missed"
 
 
+def store_sets(box, sha: str, sets: list) -> None:
+    rows = [(sha, idx, EXTRACTOR, int(kp.shape[0]), kp.astype(np.float32).tobytes(), desc.astype(np.uint8).tobytes())
+            for idx, kp, desc in sets if _valid_set(kp.astype(np.float32), desc.astype(np.uint8))]
+    box.conn.executemany("INSERT OR REPLACE INTO feature (sha256, frame, extractor, n, kp, desc) VALUES (?, ?, ?, ?, ?, ?)", rows)
+
+
 def store(box, sha: str, sidecar: dict) -> None:
     path = npz_path(box, sha)
     if not path.is_file() and not path.is_symlink():

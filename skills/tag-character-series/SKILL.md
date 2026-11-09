@@ -12,9 +12,9 @@ optional. A wrong name is worse than none: it sends every later search astray.
 
 1. **The source.** The pack's title or page, the artist's caption, the file's origin. A pack
    named after a character settles it.
-2. **The box's reference sources**, in the order its README notes give. The usual default:
-   [bangumi-data](https://github.com/bangumi-data/bangumi-data) for anime, games and related
-   subculture, then Wikipedia, then IMDb for live action. Use the source's canonical name in the
+2. **The reference sources listed in the sticker-tagging skill**, in the order the box's notes
+   give: [bangumi-data](https://github.com/bangumi-data/bangumi-data) for anime, games and related
+   subculture, then Wikipedia, then IMDb for live action. Never a site the notes add. Use the source's canonical name in the
    box's language; put other spellings in as aliases (`tag alias`).
 3. **What you see**, only when you recognise the character for certain. Vision is unreliable at
    naming characters: in testing, a capable model named the wrong character far more often than

@@ -71,11 +71,11 @@ def render_text(value, indent: int = 0) -> str:
 def emit(result: dict, as_json: bool, stream=None) -> None:
     stream = stream or sys.stdout
     if as_json:
-        stream.write(json.dumps(result, ensure_ascii=False, indent=2) + "\n")
+        stream.write(_safe(json.dumps(result, ensure_ascii=False, indent=2)) + "\n")
     else:
         text = result.get("_text") if isinstance(result.get("_text"), str) else render_text({k: v for k, v in result.items() if k != "_text"})
         if text:
-            stream.write(text + "\n")
+            stream.write(_safe(text) + "\n")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -99,20 +99,42 @@ def main(argv: list[str] | None = None) -> int:
         return err.exit_code
     except KeyboardInterrupt:
         return EXIT_ERROR
+    except Exception as err:
+        emit_error(unexpected(err), json_wanted(argv, args))
+        return EXIT_ERROR
     finally:
         from . import commands
 
         commands.close_all()
 
 
+def unexpected(err: Exception) -> BoxError:
+    """Errors the tool did not anticipate still come out as {"error": ...}, never a traceback."""
+    import sqlite3
+
+    if isinstance(err, sqlite3.OperationalError) and "locked" in str(err):
+        return BoxError("busy", "another session held the box for too long; try again")
+    if isinstance(err, sqlite3.DatabaseError):
+        return BoxError("corrupt_box", f"box.sqlite3 cannot be read as a box ({err})")
+    if isinstance(err, OSError):
+        return BoxError("os_error", f"{err.strerror or type(err).__name__}")
+    if isinstance(err, UnicodeError):
+        return BoxError("encoding", "an argument or file name is not valid UTF-8")
+    return BoxError("internal", f"unexpected {type(err).__name__}; please report it")
+
+
+def _safe(text: str) -> str:
+    return text.encode("utf-8", "replace").decode("utf-8")
+
+
 def emit_error(err: BoxError, as_json: bool) -> None:
     if as_json:
-        sys.stdout.write(json.dumps(err.to_dict(), ensure_ascii=False, indent=2) + "\n")
+        sys.stdout.write(_safe(json.dumps(err.to_dict(), ensure_ascii=False, indent=2)) + "\n")
     else:
-        sys.stderr.write(f"error ({err.code}): {err.message}\n")
+        sys.stderr.write(_safe(f"error ({err.code}): {err.message}") + "\n")
         details = render_text(err.details, 1)
         if details:
-            sys.stderr.write(details + "\n")
+            sys.stderr.write(_safe(details) + "\n")
 
 
 if __name__ == "__main__":

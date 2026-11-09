@@ -27,7 +27,8 @@ def stage_from(box, other_path: Path, ref: str, license: str | None, source: str
         if other.root == box.root:
             raise BoxError("usage", "--from names this same box")
         _, sha = refs.resolve(other, ref, staged=False)
-        row = other.conn.execute("SELECT * FROM item WHERE sha256 = ?", (sha,)).fetchone()
+        row = other.conn.execute(
+            "SELECT sha256, file, text, description, note, license, source FROM item WHERE sha256 = ?", (sha,)).fetchone()
         path = paths.stored_path(other, row)
         tags = []
         for r in other.conn.execute(
