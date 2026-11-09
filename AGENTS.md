@@ -124,6 +124,16 @@ Tick a box in the same commit as the work. Bold lines are a milestone's exit cri
 - [x] **A new agent given only the skills and an empty box can bootstrap a sticker box from a corpus pack without help** (`261108-ACCEPTANCE-M8.md`; friction fixed)
 - [x] Security code review of the whole tool and the skills (§12), plus a scan of the history for third-party content before the repository goes public (`261109-SECURITY-REVIEW-M8.md`; history scrubbed 2026-11-09)
 
+### Backlog
+
+Not scheduled; pick up when the owner asks.
+
+- [ ] `skills/buffer-triage`: a short skill for a scheduled session over a buffer box. For each
+      item before it expires, decide: move it to the sticker box or the gallery
+      (`stage --from`, then commit with that box's required tags), or let it expire. Covers
+      reading `search` with no words (newest first), `frames` for animations, the `origin` hints,
+      and that nothing is moved without a decision. Suggested by the owner 2026-11-09.
+
 ## 1. Scope
 
 In:
