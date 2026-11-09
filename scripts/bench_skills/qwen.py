@@ -17,6 +17,7 @@ import re
 import sqlite3
 import sys
 import time
+import unicodedata
 import urllib.request
 from pathlib import Path
 
@@ -201,7 +202,11 @@ def run(skill: str, variant: str, split: str, repeat: str = "a") -> None:
 
 
 def norm_text(s: str) -> str:
-    return re.sub(r"\s+", "", (s or "")).casefold()
+    """Spacing, letter case and the width of punctuation are not scored: the skill asks for
+    full-width marks in Chinese, the human transcriptions use ASCII ones."""
+    s = unicodedata.normalize("NFKC", s or "").replace("…", "...")
+    s = re.sub(r"\.{2,}", "...", s)
+    return re.sub(r"\s+", "", s).casefold()
 
 
 def cer(pred: str, gold: str) -> float:
