@@ -33,9 +33,9 @@ Pass `--box <folder>` (or set `STICKER_BOX_DIR`) and `--json` on every command.
 ## Find and send
 
 ```
-sticker-box search 无语 嫌弃 --json            any of the words; best first
-sticker-box search --tag emotion=开心 --json   only images with that tag
-sticker-box show <ref> --json                  everything about one image
+sticker-box search 无语 嫌弃 --json            # any of the words; best first
+sticker-box search --tag emotion=开心 --json   # only images with that tag
+sticker-box show <ref> --json                  # everything about one image
 ```
 
 Search matches the words you give literally, in tags, aliases, tag definitions, the text on

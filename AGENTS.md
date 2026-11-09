@@ -176,7 +176,7 @@ Not scheduled; pick up when the owner asks.
         - End-to-end tool skills: none needed.
         - If a model pre-fills labels for correction, use one that is not being benchmarked.
 
-- [ ] Skill command check (not a benchmark): a unit test that extracts every `sticker-box ...`
+- [x] Skill command check (not a benchmark, done 2026-11-09 in `tests/test_skill_commands.py`): a unit test that extracts every `sticker-box ...`
       command written in `skills/`, `docs/` and the README and parses it against the current CLI
       (command, flags, argument order) without running it, so instructions cannot go stale when
       the CLI changes. Placeholders such as `<ref>` are replaced by dummy values first. Suggested
@@ -206,7 +206,8 @@ names live in the git-ignored `testdata/private/CODENAMES.txt`.
 - [x] 0.3 Manifest verified against the consolidated directory (2,975 files, 33 packs); emptied source folders removed with `rmdir` only
   - 3,008 files (2,975 stickers and 33 manifests) verified by sha256, 0 mismatches; the test-data repo keeps only its own files; no symlink at the old path (owner's choice)
 - [x] 0.4 `testdata/private` relinked to the consolidated directory, code names updated; private tests pass
-- [ ] 1 Skill command check test (`tests/test_skill_commands.py`), stale commands fixed
+- [x] 1 Skill command check test (`tests/test_skill_commands.py`), stale commands fixed
+  - 49 documented commands parse; no stale ones found; four known-stale samples are caught
 - [ ] 2 `buffer-triage` skill written and listed in `skills/README.md`
 - [ ] 3.1 `scripts/bench_ops.py` built per `261109-OPS-BENCHMARK-DESIGN.md`
 - [ ] 3.2 Baseline run on `/tmp` and the NTFS mount; `261109-OPS-BASELINE.md` written
