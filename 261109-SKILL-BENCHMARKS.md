@@ -133,7 +133,53 @@ has-text, CER not worse): it costs one sticker. It is the shipped wording.
 
 ## 6. Qwen: `tag-emotion` and `tag-visual`
 
-*Pending.*
+Both are scored against Sonnet's reference labels (aliases resolved) on the 165 dev stickers:
+per-sticker precision, recall and F1, averaged. Qwen is given the skill, the box's locked
+vocabulary with definitions, the sticker's text and the image. Sonnet agrees with itself at F1
+0.79 (emotion) and 0.68 (visual), which is the ceiling here; Qwen's noise floor is 0.005.
+
+**`tag-emotion`** (v0: P 0.52, R 0.36; Qwen gives 1.1 tags where Sonnet gives 1.7, never the
+humour tag, and overuses "dazed" and "smug"):
+
+| variant | lever | P | R | F1 |
+|---|---|---|---|---|
+| v0 | shipped skill | 0.521 | 0.358 | 0.410 |
+| v1 | "usually two tags" | 0.527 | 0.370 | 0.418 |
+| v2 | choose from the list, read each definition, take every tag that fits | 0.533 | 0.379 | 0.428 |
+| v3 | read the text first | 0.542 | 0.373 | 0.425 |
+| v4 | no list of suggested words | 0.512 | 0.379 | 0.421 |
+| v5 | a sticker made to be funny also gets the humour tag | 0.545 | 0.379 | 0.433 |
+| v6 | minimal prompt (three lines and the list) | 0.418 | 0.345 | 0.363 |
+| v7 | v2 + v3 + v5 | 0.564 | 0.394 | **0.449** |
+| v8 | answer example with two tags | 0.552 | 0.358 | 0.422 |
+| v9 | v7 + answer example with two tags | 0.539 | 0.352 | 0.413 |
+
+Qwen ignores a stated count: "usually two tags" moved it from 1.07 to 1.11 tags, and a two-tag
+example made it give fewer (0.98). The minimal prompt lost most: without the guidance it picked
+the broad parent tag "positive" for 67 stickers. The three content levers add up.
+
+*Pending*: ablation of v7 (one lever out at a time), v0 and the winner on test.
+
+**`tag-visual`** (v0: P 0.51, R 0.43; misses face details such as blush and an open mouth, and
+accessories; overuses hairstyle, smiling and head down):
+
+| variant | lever | P | R | F1 |
+|---|---|---|---|---|
+| v0 | shipped skill | 0.511 | 0.429 | 0.448 |
+| v1 | "three to five tags is usual" | 0.490 | 0.469 | **0.463** |
+| v2 | check the small details (face, accessories) | 0.471 | 0.464 | 0.448 |
+| v3 | only what is clearly visible; hairstyle and clothing only when they stand out | 0.481 | 0.422 | 0.429 |
+| v4 | choose from the list, read each definition | 0.514 | 0.419 | 0.441 |
+| v5 | minimal prompt | 0.534 | 0.421 | 0.452 |
+| v6 | v1 + v2 | 0.460 | 0.507 | 0.462 |
+| v7 | v5 with "three to five" | 0.516 | 0.439 | 0.457 |
+
+Only the count helps, and only a little (+0.015, three times the noise); here Qwen does follow
+it (2.04 to 2.27 tags). Naming the details it misses raises recall and lowers precision by the
+same amount. Most of the gap to Sonnet is vocabulary preference (which of two fitting tags each
+model picks), which no general wording fixes.
+
+*Pending*: v0 and v1 on test.
 
 ## 7. Sonnet on the tuned wording
 
