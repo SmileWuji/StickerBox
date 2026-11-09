@@ -22,7 +22,8 @@ runs those commands itself:
 - `overlap`: they share part of a picture; often a false alarm, look before acting
 
 Look at the members before removing anything. A zoomed crop of a meme is often a different joke
-worth keeping. Remove only true copies: `sticker-box remove <ref> --json`. Links are evidence,
+worth keeping. The suggested keeper is only the largest image: when a screenshot contains a
+picture, the screenshot is larger, but the clean picture is usually the one to keep. Remove only true copies: `sticker-box remove <ref> --json`. Links are evidence,
 not orders; about one in twenty may be a false alarm.
 
 ## Limits and cleanup

@@ -12,7 +12,9 @@ together, because each one narrows the other.
 ## Sources, in this order
 
 1. **The source of the sticker.** The pack's title or page, the artist's caption, the file's
-   origin. A pack named after a character or a work settles that part.
+   origin. A pack named after a character or a work settles that part. Pack and folder names
+   are often romanised, shortened or carry an uploader's suffix (`sato_hanako_by_SomeBot`,
+   `MGTalk2`): search the likely name on bangumi.tv before deciding the pack names nothing.
 2. **The reference sources from the sticker-tagging skill**, in the order the box's notes give:
    - [bangumi-data](https://github.com/bangumi-data/bangumi-data): anime works only (TV, web,
      film, OVA), each with its original title, translated titles (`titleTranslate`, including
@@ -46,6 +48,8 @@ bangumi.tv has an open API; fetch these URLs with whatever web tool you have (no
    Chinese `name_cn`, which is the `series` tag.
 2. Its cast: `https://api.bgm.tv/v0/subjects/<id>/characters`. Ignore entries whose `relation`
    is `闲角` (unnamed extras); choose among `主角` and `配角` by comparing the picture with them.
+   Each entry's `images` has picture URLs; if your web tool shows only text, download one to
+   look at it.
 3. A character's Chinese name: `https://api.bgm.tv/v0/characters/<character id>`, field
    `infobox`, key `简体中文名`. That is the `character` tag.
 
@@ -55,7 +59,8 @@ Do not guess page URLs; search first. If the search finds nothing that fits, lea
 
 A pack named after one character often contains others. Name a character only when the picture
 matches that character; the pack name alone is not enough. When they disagree, leave
-`character` out (the pack's `series` may still fit).
+`character` out (the pack's `series` may still fit). When the face is not visible (only a body,
+an outfit, a hand), leave `character` out too: an outfit matching a cast picture is not enough.
 
 ## Writing the tags
 
