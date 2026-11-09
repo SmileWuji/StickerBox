@@ -209,7 +209,8 @@ names live in the git-ignored `testdata/private/CODENAMES.txt`.
 - [x] 1 Skill command check test (`tests/test_skill_commands.py`), stale commands fixed
   - 49 documented commands parse; no stale ones found; four known-stale samples are caught
 - [x] 2 `buffer-triage` skill written and listed in `skills/README.md`
-- [ ] 3.1 `scripts/bench_ops.py` built per `261109-OPS-BENCHMARK-DESIGN.md`
+- [x] 3.1 `scripts/bench_ops.py` built per `261109-OPS-BENCHMARK-DESIGN.md`
+  - 3.2 running in the background: results to `testdata/private/bench/ops-*.json` (synthetic data)
 - [ ] 3.2 Baseline run on `/tmp` and the NTFS mount; `261109-OPS-BASELINE.md` written
 - [ ] 3.3 Small fixes for missed targets re-measured and recorded (or deferred with reasons)
 - [ ] 4.1 Benchmark sample drawn (~250, dev 150 / test 100) and existing human gold mapped
