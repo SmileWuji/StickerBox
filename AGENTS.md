@@ -217,7 +217,8 @@ names live in the git-ignored `testdata/private/CODENAMES.txt`.
   - 264 stickers from 33 packs (dev 165, test 99) in `testdata/private/bench/sample.json`; human labels resolved: 127 has-text, 20 transcriptions, 150 character/series
 - [x] 4.2 Sonnet labelling run (sequential batches) and vocabulary cleanup; Sonnet noise-floor re-run
   - ready: 11 batches of 24 in `testdata/private/bench/batches/`, box `testdata/private/bench/sonnet-box` (file rules off), brief `testdata/private/bench/sonnet-prompt.md`; output `bench/sonnet/labels.jsonl`; snapshot the box before batch 05 for the noise-floor re-run. Done: 264/264 committed on the first attempt; cleanup by a fresh Sonnet: 1 merge, 26 aliases, 6 parents, locked at 188 tags; reference in `bench/sonnet/final.json`. Sonnet noise floor (batch 05 re-run on the snapshot, n=24): has-text 24/24, text identical 9/9, tag F1 between runs emotion 0.79, visual 0.68, character 0.86, series 0.67; friction notes in `bench/friction.md`. Next: batches 03 to 11 one at a time, copying the box to `bench/sonnet-box-pre05` before batch 05
-- [ ] 4.3 10% checked and corrected by the main agent; Sonnet accuracy per field computed
+- [x] 4.3 10% checked and corrected by the main agent; Sonnet accuracy per field computed
+  - n=26 (seeded): has-text 26/26; transcription exact 8/9 (CER 0.03); emotion P 0.98 R 1.00; visual P 0.99 R 0.97; character P 1.00 R 0.70; series P 1.00 R 0.80. Reviewed against Sonnet's labels, so an upper bound. Corrected gold in `bench/checked.json`
 - [x] 4.4 Ollama up with `qwen3.5:9b`; Qwen harness built; Qwen noise floor measured
   - Ollama runs with `OLLAMA_MODELS=../OCR-Benchmark/.ollama-models` (model already there); harness `scripts/bench_skills/qwen.py`. tag-text v0 on dev: answers differ on 1 of 78 between runs (with the OCR hint passed, as in production; 0 of 78 without it)
 - [ ] 4.5 Qwen sweep `tag-text` (dev), winner on test
