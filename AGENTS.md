@@ -35,6 +35,8 @@ order:
 
 Needs your call:
 
+- **Gold labels for the skill benchmarks** are yours: the counts to add are in the backlog item
+  "Skill benchmarks" below.
 - **QQBot wiring** is yours, per the plan: `docs/integration.md` lists install, environment,
   exit codes, the skills to copy, and how to label box content as data in a plugin.
 
@@ -150,6 +152,25 @@ Not scheduled; pick up when the owner asks.
         `optimize-prompt-for-small-vlm` skill has the protocol). Prior art: the Observatory OCR
         benchmark and the old Tagger evaluation (`../GuidedStickerTagger-SNAPSHOT-260920/eval/`).
         DeepSeek, the model QQBot runs on, can be added as a third.
+      - Gold labels, **the owner's action item** (counted 2026-11-09; all existing labels map to
+        current corpus files). Existing: the Observatory OCR gold
+        (`../GuidedStickerObservatory/.claude/skills/benchmark-observatory/bench/gold/`: 127
+        has-text, 14 with watermarks, 20 transcriptions, 95 noise) and the old Tagger gold
+        (`../Tagger-Benchmark/labels/phase_b_gt.json`: 150 stickers reviewed by the owner, 138
+        named, 31 characters in 11 series, 10 without a character, 10 probes). To add, aiming to
+        tell two models apart by about 10 points (roughly 5 to 6 hours in all):
+        - `tag-text`, has text: about 75 more (to about 200), chosen so at least 40 have a
+          watermark.
+        - `tag-text`, transcription: about 130 more (to about 150), starting with the 60 has-text
+          stickers not yet transcribed.
+        - `tag-character-series`: zh-Hans canonical names for the 31 characters and 11 series,
+          and about 30 more stickers with no character.
+        - `tag-emotion` and `tag-visual`: about 200 stickers labelled for both (the 150 Tagger
+          stickers plus 50), and a second person on 50 of them to measure human agreement.
+        - `vocab-cleanup`: about 100 tag pairs from one bootstrap run, judged same or different.
+        - `gallery-maintenance`: about 100 real chat images later; generated variants stand in.
+        - End-to-end tool skills: none needed.
+        - If a model pre-fills labels for correction, use one that is not being benchmarked.
 
 - [ ] Operations benchmark and baseline: build the benchmark designed in
       `261109-OPS-BENCHMARK-DESIGN.md` (lookups, additions, changes, removals, maintenance,
