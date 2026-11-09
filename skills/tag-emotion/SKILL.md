@@ -10,12 +10,16 @@ the main way a sticker gets found mid-conversation, so tag the reaction, not the
 
 ## How to decide
 
-- Look at the face, the pose and the text together. Text often decides it: a smiling face
-  captioned "谢谢你啊" after a mishap is sarcasm, not happiness.
+- Read the text first, then the face and the pose. When there is text, it usually decides: a
+  smiling face captioned "谢谢你啊" after a mishap is sarcasm, not happiness.
+- Start from the emotion tags in the box's `README.md`: read each definition and take every
+  tag whose definition fits. Create a new tag only when none fits and the vocabulary is open.
 - One to three tags. Add a second only when it is also clearly there (embarrassed and happy;
   angry and helpless). Order does not matter.
 - Prefer the words people would type when looking for a reply: 无语, 嫌弃, 委屈, 得意, 震惊,
   开心, 生气, 害羞, 卖萌, 疑惑, 摆烂, 求饶. Reuse what the box already has.
+- A sticker made to be funny (a joke, an absurd face, a pun) also gets the box's tag for
+  humour when it has one: that is how people look for it.
 - Broader and narrower feelings can be linked with `tag parent` (负面 > 嫌弃) during cleanup;
   tag the narrow one.
 

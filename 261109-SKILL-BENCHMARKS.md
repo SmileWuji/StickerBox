@@ -1,7 +1,6 @@
 # Skill benchmarks (2026-11-09)
 
-Status: paused on 2026-11-09 with the host turned off; resume steps are in `AGENTS.md` under
-"Paused 2026-11-09". Sections marked *pending* are filled as the runs finish.
+Status: runs complete (2026-11-09).
 
 ## 1. Question
 
@@ -129,7 +128,19 @@ it is the candidate. The partly-legible-watermark line was dropped: it cost one 
 v11 was accepted on a rule set before its run (no worse than v10 by more than one sticker on
 has-text, CER not worse): it costs one sticker. It is the shipped wording.
 
-*Pending*: v0 and v11 once on test.
+**Test** (once, after the choice; 67 human labels with 4 watermark-only, 54 transcriptions):
+
+| variant | has-text | watermark recall | CER | exact | median latency |
+|---|---|---|---|---|---|
+| v0 | 0.940 | 4/4 | 0.236 | 0.556 | 1.0 s |
+| v11 (shipped) | 0.940 | 3/4 | 0.246 | 0.574 | 1.0 s |
+| v11 at 1024 px | 0.940 | 4/4 | 0.228 | 0.593 | 2.1 s |
+
+The dev gain does not carry over. All three make the same four has-text errors (small marks
+read as text), and v11's missed watermark is a handle written without its `@`. For Qwen the
+wording changes nothing measurable in either direction; v11 ships because it answers the cases
+the agents asked about at no cost. On dev, v8 at 1024 px reached has-text 0.936 with watermark
+recall 0.8: image size remains the only lever that moved Qwen.
 
 ## 6. Qwen: `tag-emotion` and `tag-visual`
 
@@ -158,7 +169,11 @@ Qwen ignores a stated count: "usually two tags" moved it from 1.07 to 1.11 tags,
 example made it give fewer (0.98). The minimal prompt lost most: without the guidance it picked
 the broad parent tag "positive" for 67 stickers. The three content levers add up.
 
-*Pending*: ablation of v7 (one lever out at a time), v0 and the winner on test.
+Ablation of v7, one lever out at a time: without the definitions line 0.440, without text-first
+0.436, without the humour line 0.438. Each costs about twice the noise, so all three stay.
+
+Test (n=99): v0 F1 0.411 (P 0.535, R 0.354), v7 F1 0.436 (P 0.556, R 0.379). The gain holds at
+about two thirds of its dev size. v7 ships.
 
 **`tag-visual`** (v0: P 0.51, R 0.43; misses face details such as blush and an open mouth, and
 accessories; overuses hairstyle, smiling and head down):
@@ -179,7 +194,8 @@ it (2.04 to 2.27 tags). Naming the details it misses raises recall and lowers pr
 same amount. Most of the gap to Sonnet is vocabulary preference (which of two fitting tags each
 model picks), which no general wording fixes.
 
-*Pending*: v0 and v1 on test.
+Test (n=99): v0 F1 0.429, v1 0.431. The dev gain does not hold, so the visual skill keeps its
+original wording.
 
 ## 7. Sonnet on the tuned wording
 
@@ -203,6 +219,24 @@ background print that the skill asks to include.
 
 So the tuned wording as first written was worse for Sonnet, as the protocol warned it might be;
 the scoped v11 is not, and it is what ships.
+
+`tag-emotion`: two fresh Sonnet agents tagged the 26 stickers the main agent checked (the only
+labels independent of Sonnet's run), one with the original emotion wording (a), one with v7 (b);
+the visual wording was the original in both, which measures Sonnet's own run-to-run spread.
+Answers only, with the locked vocabulary, scored against the checked labels:
+
+| who | emotion P | emotion R | emotion F1 | visual F1 |
+|---|---|---|---|---|
+| Sonnet, original (a) | 0.750 | 0.654 | 0.679 | 0.764 |
+| Sonnet, v7 (b) | 0.731 | 0.750 | 0.724 | 0.809 |
+| Qwen, original | 0.462 | 0.308 | 0.359 | 0.374 |
+| Qwen, v7 | 0.500 | 0.308 | 0.372 | |
+
+The visual F1 differs by 0.045 with identical wording, so that is Sonnet's spread at n=26; the
+emotion difference is the same size and within it. v7 gave Sonnet more emotion tags (1.73
+against 1.42 per sticker, closer to the checked labels) and the humour tag five times instead
+of two. The tuned emotion wording is not worse for Sonnet. These scores sit below the labelling
+run's (section 4) because the checked labels were made by correcting that run, which favours it.
 
 
 ## 8. Smoke tests (Sonnet, no tuning)
@@ -233,12 +267,40 @@ Fixes from these runs:
 
 ## 9. Verdict and changes
 
-*Pending.*
+- **Sonnet follows the skills well.** 264 of 264 commits were accepted on the first attempt;
+  text is near perfect; emotion and visual tags are about 98% right on the checked sample;
+  names are never wrong where they could be checked, at the cost of abstaining on about 30% of
+  recognisable characters, which is the trade the skill asks for. Every tool and curation task
+  in the smoke tests succeeded, including both policy-rule cases and two planted instructions.
+- **Qwen3.5-9B is usable for reading text, not yet for choosing tags.** Has-text accuracy is
+  0.89 to 0.94 with the OCR hint; faint corner watermarks are its main miss, and only a larger
+  image (1024 px, twice the latency) recovers them. Its emotion and visual tags agree with
+  Sonnet's at F1 0.41 to 0.45, about half of Sonnet's agreement with itself.
+- **Prompt wording barely moves Qwen.** Across about 30 wording variants the only gains that survived the test
+  split are in emotion (+0.025 F1, from naming the humour tag, reading the text first and
+  choosing by definition). Stated counts and answer examples are ignored or backfire. A
+  deployment of a small model should tune the image size and the model, not the wording.
+- **Shipped changes** (one skill text for every model, as decided):
+  - `tag-text`: v11, the reading-order rule scoped to vertical blocks, readable sound effects,
+    logos and print, and a lone corner handle still means has text.
+  - `tag-emotion`: v7, read the text first, choose from the box's tags by their definitions,
+    and add the humour tag to stickers made to be funny.
+  - `tag-visual`: unchanged; its one gain did not hold on test.
+  - From the agents' friction (section 4) and the smoke tests (section 8): the output shapes
+    of `stage` and `commit` in `sticker-box`; a verified bangumi.tv lookup, searching romanised
+    pack names and no name without a face in `tag-character-series`; ties, pack twins, quoting
+    and when to lock in `vocab-cleanup`; the keeper is only the largest image in
+    `gallery-maintenance`.
+- **Not done**: DeepSeek, which QQBot runs on, as a third model; a human-agreement measure for
+  emotion and visual (the owner's gold-label item, still open); `gallery-maintenance` on real
+  chat images.
 
 ## 10. Caveats
 
 - n is small: 78 human-labelled dev stickers for has-text, 26 independently checked stickers.
   Differences of one or two stickers are within noise.
+- The 26 checked stickers were also used for the Sonnet wording check in section 7 after the
+  emotion wording was chosen on dev; they were not used to choose anything.
 - The independent check was done by reviewing Sonnet's labels, not blind; it is lenient.
 - Qwen is scored against Sonnet's labels for transcription, emotion and visual; Sonnet's own
   run-to-run agreement (section 3) bounds what agreement can mean.

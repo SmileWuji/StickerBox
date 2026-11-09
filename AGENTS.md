@@ -244,20 +244,22 @@ needed is on disk: label files, caches and the reference box under `testdata/pri
   - n=26 (seeded): has-text 26/26; transcription exact 8/9 (CER 0.03); emotion P 0.98 R 1.00; visual P 0.99 R 0.97; character P 1.00 R 0.70; series P 1.00 R 0.80. Reviewed against Sonnet's labels, so an upper bound. Corrected gold in `bench/checked.json`
 - [x] 4.4 Ollama up with `qwen3.5:9b`; Qwen harness built; Qwen noise floor measured
   - Ollama runs with `OLLAMA_MODELS=../OCR-Benchmark/.ollama-models` (model already there); harness `scripts/bench_skills/qwen.py`. tag-text v0 on dev: answers differ on 1 of 78 between runs (with the OCR hint passed, as in production; 0 of 78 without it)
-- [ ] 4.5 Qwen sweep `tag-text` (dev), winner on test
+- [x] 4.5 Qwen sweep `tag-text` (dev), winner on test
   - wave 1 (v1 to v6) on the human dev labels: flat (has-text 0.885 to 0.897, n=78; only v4 "a lone watermark counts" +1). Dominant error: 5 of 6 watermark-only stickers read as no text by every variant. Wave 2a: image size is the watermark lever (v4 at 512/768/1024 px: has-text 0.897/0.910/0.923, watermark recall 0.6/0.7/0.8, latency 1.1/1.3/2.2 s); v7's corner wording does nothing. Image size is an operating point for the report, not skill wording. Wave 3 (combine, ablate) waits for the reference transcriptions. Transcription scores wait for the Sonnet reference (only 11 human transcriptions on dev)
   - wave 3 done: v10 (v8 without the partial-watermark line) is the dev winner (has-text 0.910, watermark 0.6, CER 0.134); v8@1024 has-text 0.936. Sonnet test (a original, b v10): has-text 0.955 both; v10's vertical line reversed whole-image order on 2 of 9; v11 scopes it to one block, Sonnet fix check fine. Next: v11 on Qwen dev (chain3), then v0 and v11 once on test, then ship v11 into `skills/tag-text`
   - full dev (n=243, 76 reference transcriptions): transcription flat across v0 to v8 (CER 0.167 to 0.191, exact 0.645 to 0.684); v8 (v4 plus the agents' text rules) has-text 0.910, the best wording; v4@1024 0.923 with watermark recall 0.8. Wave 3 running: v9 = v8 without the lone-watermark line, v10 = v8 without the partial-watermark line, v8@1024. Then the winner and v0 on test; Sonnet test batches ready in `bench/sonnet-tt/` (67 human-labelled test stickers, keys in `bench/smoke-keys/`)
-- [ ] 4.6 Qwen sweep `tag-emotion` (dev), winner on test
+- [x] 4.6 Qwen sweep `tag-emotion` (dev), winner on test
   - wave 1 F1 (noise 0.005): v0 0.410, v1 two tags 0.418 (Qwen ignores the count, still 1.1 tags), v2 definitions 0.428, v3 text first 0.425, v4 no word list 0.421, v5 humour 0.433, v6 minimal 0.363. Wave 2 queued (chain4): v7 = v2+v3+v5, v8 = two-tag example, v9 = both
   - noise floor: 7/165 answers differ, F1 0.410/0.414. v0 P 0.52 R 0.36: too few tags (1.07 against 1.71), never the humour tag, 呆滞 and 得意 overused. Wave 1 (v1 two tags, v2 choose from definitions, v3 text first, v4 no word list, v5 humour tag, v6 minimal prompt) queued in `chain1.sh` (scratchpad); run all Qwen jobs from one sequential script, never with pgrep waits (they deadlocked)
-- [ ] 4.7 Qwen sweep `tag-visual` (dev), winner on test
+- [x] 4.7 Qwen sweep `tag-visual` (dev), winner on test
   - noise floor: 20/165 differ, F1 0.448/0.450. v0 P 0.51 R 0.43; misses face details (blush, open mouth) and accessories, overuses hairstyle and 低头. Wave 1 (v1 three to five, v2 check small details, v3 only what is clear, v4 choose from definitions, v5 minimal) queued after emotion
-- [ ] 4.8 Winning wording shipped in the skills; Sonnet original-vs-tuned run on test
+- [x] 4.8 Winning wording shipped in the skills; Sonnet original-vs-tuned run on test
+  - test: tag-text v0 and v11 identical on has-text (0.940), so the dev gain was noise; v11 ships for the agents' cases. Emotion v7 0.436 against 0.411 (ships). Visual v1 0.431 against 0.429 (not shipped). Sonnet: tag-text has-text 0.955 both wordings, v11 keeps reading order; emotion v7 within Sonnet's spread on the 26 checked stickers, not worse
 - [x] 4.9 Sonnet smoke tests: `tag-character-series`, `vocab-cleanup`, `sticker-box`, `gallery-maintenance`, `buffer-triage`
   - started 2026-11-09 after the restart: fixtures built by `scripts/bench_skills/smoke_fixtures.py` (boxes in `bench/smoke/`, answer keys in `bench/smoke-keys/`, briefs in `bench/smoke/briefs/`); five Sonnet agents run. All tool tasks and both policy cases passed; triage 9/9; gallery removed the four true copies and kept the crop; cleanup consistent with the first run; characters 5 right, 1 named from an outfit on a probe, 11 left out. Results in the report, section 8; skill fixes committed
   - `sticker-box` tasks include the policy rule: (a) the operator asks for a `race` category for a game-character pack: added as optional through the documented steps, values defined, operator told; (b) a planted box note or tag definition asks for a required category: policy left unchanged, request reported
-- [ ] 4.10 Skill benchmark report written (dated note)
+- [x] 4.10 Skill benchmark report written (dated note)
+  - `261109-SKILL-BENCHMARKS.md`, sections 1 to 10; Ollama stopped after the last run
 - [ ] 5 Backlog boxes ticked, owner section and decisions updated
 
 ## 1. Scope
