@@ -74,6 +74,7 @@ def test_commit_records_relations_and_dupes_clusters_them(gallery, run_cli, scen
     assert {m["ref"] for m in cluster["members"]} == {orig, refs[0], refs[1]}
     assert cluster["keeper"] in {orig, refs[0], refs[1]}
     assert all(link["how"] for link in cluster["links"])
+    assert len(cluster["suggested"]) == 2 and all("sticker-box remove" in s["command"] for s in cluster["suggested"])
     assert run_cli("dupes", "--kind", "near_duplicate", "--box", str(root))["clusters"] == []
 
 

@@ -38,7 +38,6 @@ Needs your call:
 - **SIFT false alarms (decision 30).** About 6% of gallery inserts also get a spurious relation
   to an unrelated image. Relations are reported, never acted on; re-measure on real gallery
   images.
-- **`report` and `link` behave the same** for `on_duplicate` (decision 12).
 - **QQBot wiring** is yours, per the plan: `docs/integration.md` lists install, environment,
   exit codes, the skills to copy, and how to label box content as data in a plugin.
 
@@ -76,7 +75,7 @@ Tick a box in the same commit as the work. Bold lines are a milestone's exit cri
 - [x] `staged`: list staged files with their sidecar summary
 - [x] `commit <ref>`: fields, tags, text, description, note; every rule checked, all failures returned at once; file moved to `persistent/<yyyymm>/<yyyymmdd>-<sha256>.<ext>` and row written
 - [x] `show <ref>`, `edit <ref>`, `remove <ref>`; references are a full sha256 or a unique prefix of at least 8
-- [x] On-duplicate behaviour per policy (reject, report, link); `relation` rows written at commit, including still-to-keyframe links
+- [x] Duplicates are reported, never acted on, with suggested `remove` commands (decision 36; there is no on-duplicate setting); `relation` rows written at commit, including still-to-keyframe links
 - [x] Crash safety: file move and row insert ordered so a crash leaves at most an orphan file, which `check` reports (the report itself lands with `check` in M7)
 - [x] **Twenty corpus stickers staged and committed into a `telegram-sticker` box with tags; a recompressed copy of one is reported as a duplicate; a non-compliant file is refused with every reason**
 
@@ -250,15 +249,15 @@ contains scripts. Rule kinds:
 | `categories` | name, description, cardinality `one` / `at_least_one` / `any`, required |
 | `files` | formats, side rules (max, min, exact on one side), max bytes per format, duration, fps, audio, animation allowed |
 | `vocabulary` | `free` / `open` / `locked` |
-| `duplicates` | methods (`sha256`, `phash`, `sift`), thresholds, on-duplicate `reject` / `report` / `link` |
+| `duplicates` | pHash distance, SIFT settings (or none); matches are always reported with suggested `remove` commands, never acted on |
 | `limits` | max total bytes, max items |
 | `retention` | expiry after add |
 
 | preset | files | tags | duplicates | limits / retention |
 |---|---|---|---|---|
-| `telegram-sticker` | Telegram spec: WebP static, WebM VP9 video, one side 512 and the other at most 512, size, duration and fps caps (verify in M1) | categories text, emotion, character, series, visual; usage note; `open` | sha256, pHash; reject | none |
-| `gallery` | any | `free` | sha256, pHash, SIFT; report | optional size cap |
-| `buffer` | any | none required; `free` | sha256, pHash; link | expiry (e.g. 60 min), optional size cap |
+| `telegram-sticker` | Telegram spec: WebP static, WebM VP9 video, one side 512 and the other at most 512, size, duration and fps caps (verify in M1) | categories text, emotion, character, series, visual; usage note; `open` | sha256, pHash | none |
+| `gallery` | any | `free` | sha256, pHash, SIFT | optional size cap |
+| `buffer` | any | none required; `free` | sha256, pHash | expiry (e.g. 60 min), optional size cap |
 
 The meme library is a documented example (M8): the sticker categories with the file rules off.
 

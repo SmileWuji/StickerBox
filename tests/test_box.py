@@ -64,7 +64,7 @@ def test_policy_set_is_validated_logged_and_reaches_the_readme(tmp_path, run_cli
         ("fields", '{"license": {"required": false}}', "license is always required"),
         ("vocabulary", '{"mode": "open", "default_category": "nope"}', "not a category"),
         ("files", '{"formats": {"bmp": {}}}', "unknown key"),
-        ("duplicates", '{"on_duplicate": "explode"}', "on_duplicate"),
+        ("duplicates", '{"on_duplicate": "reject"}', "unknown key"),
     ],
 )
 def test_policy_set_rejects_bad_params(tmp_path, run_cli, rule, params, fragment):

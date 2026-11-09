@@ -10,7 +10,6 @@ RULES = ("fields", "categories", "files", "vocabulary", "duplicates", "limits", 
 CORE_FIELDS = ("license", "source", "text", "description", "note")
 FORMATS = ("webp", "png", "jpeg", "gif", "webm")
 MODES = ("free", "open", "locked")
-ON_DUPLICATE = ("reject", "report", "link")
 FIELD_NAME = re.compile(r"[a-z][a-z0-9_]{0,31}")
 CATEGORY_NAME = re.compile(r"[\w\-]{1,32}")
 CODEC = re.compile(r"[a-z0-9]{1,16}")
@@ -20,7 +19,7 @@ DEFAULTS = {
     "categories": {},
     "files": {"formats": None, "all": {}},
     "vocabulary": {"mode": "free", "default_category": None},
-    "duplicates": {"phash_max_distance": 6, "sift": None, "on_duplicate": "report"},
+    "duplicates": {"phash_max_distance": 6, "sift": None},
     "limits": {"max_bytes": None, "max_items": None},
     "retention": {"expire_after_minutes": None, "staged_grace_minutes": 60},
     "analysis": {"ocr_hint": False, "keyframe_drop_thr": 0.10, "max_keyframes": 64, "sift_keyframes": 4},
@@ -144,9 +143,6 @@ def _vocabulary(p: dict) -> dict:
 
 
 def _duplicates(p: dict) -> dict:
-    on = p.get("on_duplicate", "report")
-    if on not in ON_DUPLICATE:
-        _fail("duplicates", f"on_duplicate must be one of {', '.join(ON_DUPLICATE)}")
     sift = p.get("sift")
     if sift is not None:
         sift = {**SIFT_DEFAULTS, **_keys("duplicates", sift, set(SIFT_DEFAULTS), "sift")}
@@ -156,7 +152,6 @@ def _duplicates(p: dict) -> dict:
     return {
         "phash_max_distance": _int("duplicates", p.get("phash_max_distance", 6), "phash_max_distance", 0, 32),
         "sift": sift,
-        "on_duplicate": on,
     }
 
 
@@ -197,7 +192,7 @@ VALIDATORS = {
 TOP_KEYS = {
     "files": {"formats", "all"},
     "vocabulary": {"mode", "default_category"},
-    "duplicates": {"phash_max_distance", "sift", "on_duplicate"},
+    "duplicates": {"phash_max_distance", "sift"},
     "limits": {"max_bytes", "max_items"},
     "retention": {"expire_after_minutes", "staged_grace_minutes"},
     "analysis": set(DEFAULTS["analysis"]),
@@ -236,6 +231,8 @@ def validate(policy: dict) -> dict:
 
 def load(conn: sqlite3.Connection) -> dict:
     stored = {row["name"]: json.loads(row["params"]) for row in conn.execute("SELECT name, params FROM policy_rule")}
+    if isinstance(stored.get("duplicates"), dict):
+        stored["duplicates"].pop("on_duplicate", None)
     return {name: stored.get(name, copy.deepcopy(DEFAULTS[name])) for name in RULES}
 
 
@@ -343,11 +340,8 @@ def describe(policy: dict) -> dict[str, list[str]]:
     lines = [f"Identical files are never stored twice. Images within {dup['phash_max_distance']} bits of perceptual hash count as near-duplicates."]
     if dup["sift"]:
         lines.append(f"Local features (SIFT, {dup['sift']['keypoints']} keypoints) find crops, zooms and rotations of stored images (at least {dup['sift']['min_inliers']} matching points).")
-    lines.append({
-        "reject": "A near-duplicate is refused.",
-        "report": "A near-duplicate is reported; whoever adds the image decides whether to keep it.",
-        "link": "A near-duplicate is kept and linked to the image it resembles.",
-    }[dup["on_duplicate"]])
+    lines.append("Duplicates and related images are reported, never refused or removed by the tool: each report comes "
+                 "with suggested `sticker-box remove` commands, and whoever adds the image decides what to keep.")
     out["duplicates"] = lines
 
     lim, ret = policy["limits"], policy["retention"]

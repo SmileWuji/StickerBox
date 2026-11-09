@@ -39,9 +39,8 @@ def test_m3_twenty_stickers_a_duplicate_and_a_refusal(private_data, tmp_path, ru
     with Image.open(original) as im:
         im.save(copy, "WEBP", quality=35)
     (dup,) = run_cli("stage", str(copy), *box)["results"]
-    assert dup["duplicates"] and dup["duplicates"][0]["kind"] == "near_duplicate"
-    refused = run_cli("commit", dup["ref"], *box, *STICKER, "--tag", "emotion=情绪0", expect=1)
-    assert [p["problem"] for p in refused["problems"]] == ["duplicate"]
+    assert dup["duplicates"] and dup["duplicates"][0]["kind"] == "near_duplicate" and dup["duplicates"][0]["suggested"]
+    run_cli("remove", dup["ref"], *box)
 
     big = tmp_path / "big.png"
     with Image.open(original) as im:
@@ -49,7 +48,7 @@ def test_m3_twenty_stickers_a_duplicate_and_a_refusal(private_data, tmp_path, ru
     (bad,) = run_cli("stage", str(big), *box)["results"]
     refused = run_cli("commit", bad["ref"], *box, expect=1)
     problems = sorted(p.get("rule") or p.get("field") or p.get("category") or p["problem"] for p in refused["problems"])
-    assert problems == ["duplicate", "emotion", "license", "note", "png.max_side", "png.one_side", "text"]
+    assert problems == ["emotion", "license", "note", "png.max_side", "png.one_side", "text"]
 
 
 MOODS = {"无语": "说不出话", "无语了": "说不出话了", "开心": "高兴", "开心！": "很高兴", "哭": "流泪", "大哭": "哭得厉害",

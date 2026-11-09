@@ -65,6 +65,16 @@ Two steps. Nothing is stored until the second.
 The box does not convert files. If a file breaks a format or size rule, convert it first or
 leave it out. `--license unknown` is a valid answer when the licence cannot be found out.
 
+## Duplicates are your call
+
+The box never refuses or removes an image because it resembles another (only the exact same
+file is never stored twice). `stage` lists matches under `duplicates`, and `commit` under
+`relations`, each with a `kind`, a `file` you can look at, and `suggested`: ready-to-run
+`sticker-box remove ...` commands with their `effect`, the likelier choice first (for the same
+picture, keep the larger or animated one). Look at both images, then run one suggestion, or
+none to keep both. A crop, rotation or still taken from an animation is often a different
+sticker worth keeping.
+
 ## Change or remove
 
 ```

@@ -81,7 +81,6 @@ def _matches(box, policy: dict, sidecar: dict, exclude: str | None = None) -> li
     return matches
 
 
-DUPLICATE_KINDS = {"near_duplicate", "duplicate"}
 
 
 def _fresh_analysis(box, policy: dict, src, sha: str) -> dict:
@@ -126,10 +125,6 @@ def commit(box, ref: str, tags: list[str], defines: list[tuple[str, str]], value
     problems += plan.problems
     problems += vocab.cardinality(policy, plan.labels, plan.attempted)
     matches = _matches(box, policy, sidecar)
-    near = [m for m in matches if m["kind"] in DUPLICATE_KINDS]
-    if near and policy["duplicates"]["on_duplicate"] == "reject":
-        problems.append({"problem": "duplicate", "message": "a near-duplicate is already stored and this box refuses near-duplicates",
-                         "matches": stage.duplicate_report(box, near)})
     if problems:
         raise BoxError("invalid", f"{len(problems)} problem(s); nothing was stored", problems=problems, warnings=plan.warnings)
     from . import limits
@@ -216,7 +211,7 @@ def commit(box, ref: str, tags: list[str], defines: list[tuple[str, str]], value
         "file": str(dest),
         "tags": plan.labels,
         "created_tags": [f"{c['category']}={c['value']}" for c in plan.create],
-        "relations": stage.duplicate_report(box, matches),
+        "relations": stage.duplicate_report(box, matches, sha, sidecar["media"], staged=False),
         "expires_at": expires,
         "removed": removed,
         "warnings": plan.warnings,

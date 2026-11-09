@@ -10,8 +10,9 @@ Read the box's `README.md` for its limits and expiry first.
 ## Duplicates, crops and rotations
 
 `sticker-box dupes --json` lists groups of related images. Each group has a suggested `keeper`
-(the largest, then the oldest), its `members` with paths and sizes, and `links` saying how
-they relate:
+(the largest, then the oldest), its `members` with paths and sizes, `suggested` commands that
+would remove every member but the keeper, and `links` saying how they relate. The tool never
+runs those commands itself:
 
 - `near_duplicate` / `duplicate`: the same picture, re-saved or resized
 - `crop_of` / `contains`: one shows part of the other (for example, a screenshot that contains

@@ -66,6 +66,34 @@ def hex_hashes(summary: dict) -> list[int]:
     return [int(k["phash"], 16) for k in summary["keyframes"]]
 
 
+SAME_PICTURE = {"near_duplicate", "duplicate"}
+
+
+def _remove(box, ref: str) -> str:
+    import shlex
+
+    return f"sticker-box remove {ref[:12]} --box {shlex.quote(str(box.root))}"
+
+
+def suggest(box, new_ref: str, new_media: dict, match: dict, staged: bool) -> list[dict]:
+    """Ready-to-run commands for a reported match, likelier choice first. The tool never runs
+    them; whoever added the image decides."""
+    row = box.conn.execute("SELECT width, height, bytes, animated FROM item WHERE sha256 = ?", (match["ref"],)).fetchone()
+    if row is None:
+        return []
+    drop_new = {"command": _remove(box, new_ref),
+                "effect": "drop this new image, keep the stored one" if staged else "remove the image just added, keep the older one"}
+    drop_old = {"command": _remove(box, match["ref"]),
+                "effect": ("remove the stored image; commit this one first to keep it instead" if staged
+                           else "remove the older image, keep the one just added")}
+    if match["kind"] not in SAME_PICTURE:
+        drop_new["effect"] += f" (only if it shows the same thing: this is `{match['kind']}`, not an identical picture)"
+        return [drop_new]
+    new_quality = (new_media["width"] * new_media["height"], bool(new_media["animated"]), new_media["bytes"])
+    old_quality = (row["width"] * row["height"], bool(row["animated"]), row["bytes"])
+    return [drop_old, drop_new] if new_quality > old_quality else [drop_new, drop_old]
+
+
 def _edge_summary(kind: str, method: str, score, transform: str | None) -> str:
     if method == "sift" and transform:
         import json
@@ -110,6 +138,8 @@ def clusters(box, kinds: set[str] | None = None) -> list[dict]:
                          "bytes": r["bytes"], "added_at": r["added_at"], "animated": bool(r["animated"])} for r in rows],
             "links": [{"a": r["a"], "b": r["b"], "kind": r["kind"], "how": _edge_summary(r["kind"], r["method"], r["score"], r["transform"])}
                       for r in rels if r["a"] in member_set],
+            "suggested": [{"command": _remove(box, r["sha256"]), "effect": "keep the suggested keeper, remove this one"}
+                          for r in rows if r["sha256"] != keeper["sha256"]],
         })
     out.sort(key=lambda c: -len(c["members"]))
     return out

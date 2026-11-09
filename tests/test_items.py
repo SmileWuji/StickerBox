@@ -99,14 +99,22 @@ def recompressed(tmp_path, source: Path) -> Path:
     return out
 
 
-def test_near_duplicate_is_refused_in_a_sticker_box(box, run_cli, tmp_path):
+def test_near_duplicate_is_reported_with_suggested_commands(box, run_cli, tmp_path):
+    import shlex
+
     root = box()
     (a,) = stage(run_cli, root, GENERIC / "sticker-static.webp")
     run_cli("commit", a["ref"], "--box", str(root), *STICKER, "--define", "emotion=无语", "说不出话")
     (b,) = stage(run_cli, root, recompressed(tmp_path, GENERIC / "sticker-static.webp"))
-    assert b["duplicates"][0]["ref"] == a["ref"] and b["duplicates"][0]["kind"] == "near_duplicate"
-    out = run_cli("commit", b["ref"], "--box", str(root), *STICKER, "--tag", "emotion=无语", expect=1)
-    assert [p["problem"] for p in out["problems"]] == ["duplicate"]
+    (dup,) = b["duplicates"]
+    assert dup["ref"] == a["ref"] and dup["kind"] == "near_duplicate"
+    first, second = dup["suggested"]
+    assert first["command"].startswith(f"sticker-box remove {b['ref'][:12]} --box ") and "keep the stored one" in first["effect"]
+    assert second["command"].startswith(f"sticker-box remove {a['ref'][:12]} --box ")
+    out = run_cli("commit", b["ref"], "--box", str(root), *STICKER, "--tag", "emotion=无语")
+    assert out["relations"][0]["kind"] == "near_duplicate" and out["relations"][0]["suggested"]
+    run_cli(*shlex.split(out["relations"][0]["suggested"][0]["command"])[1:])
+    assert run_cli("info", "--box", str(root))["items"] == 1
 
 
 def test_near_duplicate_is_reported_and_linked_in_a_gallery(box, run_cli, tmp_path):

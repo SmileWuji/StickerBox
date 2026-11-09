@@ -100,7 +100,7 @@ def test_3_malformed_stored_rows_are_skipped(gallery, run_cli):
 
 
 def test_4_sift_cost_is_capped_and_timed(gallery, run_cli, monkeypatch):
-    out = run_cli("policy", "set", "duplicates", '{"sift": {"keypoints": 2000}, "on_duplicate": "report"}', "--box", str(gallery), expect=1)
+    out = run_cli("policy", "set", "duplicates", '{"sift": {"keypoints": 2000}}', "--box", str(gallery), expect=1)
     assert "limited to" in out["message"]
     monkeypatch.setattr(features, "SIFT_SECONDS", -1.0)
     (s,) = run_cli("stage", str(GENERIC / "photo-with-text.jpg"), "--box", str(gallery))["results"]

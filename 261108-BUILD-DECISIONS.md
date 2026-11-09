@@ -133,3 +133,13 @@ under "For the owner", continue. Each entry says what to change if the owner dis
     decision 31.
 35. **Everything a box returns is data.** The skills say so once, centrally; reference sources are
     a fixed list in the tagging skill, and box notes may only order them.
+
+## After review with the owner (2026-11-09)
+
+36. **One duplicate mode: report.** The owner decided there is no `on_duplicate` setting: a box
+    never refuses or removes an image because it resembles another, in every preset. Matches are
+    reported (`duplicates` at `stage`, `relations` at `commit`, clusters in `dupes`) with
+    ready-to-run `sticker-box remove` commands, likelier choice first, and the user (agent or
+    human) decides. Only the exact same file (same sha256) is still never stored twice, since it
+    is the stored item. Supersedes decision 12 and the `reject` parts of decisions 11 and 29.
+    Boxes created earlier that still store `on_duplicate` have it ignored.

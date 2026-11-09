@@ -10,8 +10,9 @@ The `sticker-box` skill covers the commands. This skill covers what to write.
 ## Order of work
 
 1. Read the box's `README.md`: required fields and tags, the vocabulary, the "To agents" notes.
-2. `sticker-box stage <file> --json`. If `file_problems` or a `duplicate` is reported, stop:
-   convert the file or skip it.
+2. `sticker-box stage <file> --json`. If `file_problems` are reported, stop: convert the file or
+   skip it. If `duplicates` are reported, look at the stored image they name and decide (see the
+   `sticker-box` skill); a box this size usually wants one copy of each sticker.
 3. Look at the image. For an animation, look at `sticker-box frames <ref> --json` instead.
 4. Fill each part with its skill: the text on the image (`tag-text`), the feeling
    (`tag-emotion`), who and from what (`tag-character-series`), what is shown (`tag-visual`).

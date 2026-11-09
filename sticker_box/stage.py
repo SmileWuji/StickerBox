@@ -82,11 +82,14 @@ def requirements(policy: dict) -> dict:
     }
 
 
-def duplicate_report(box, matches: list[dict]) -> list[dict]:
+def duplicate_report(box, matches: list[dict], new_ref: str | None = None, new_media: dict | None = None, staged: bool = True) -> list[dict]:
     out = []
     for m in matches:
         row = box.conn.execute("SELECT sha256, file FROM item WHERE sha256 = ?", (m["ref"],)).fetchone()
-        out.append({**m, "file": paths.safe_stored_str(box, row) if row else None})
+        entry = {**m, "file": paths.safe_stored_str(box, row) if row else None}
+        if new_ref and new_media:
+            entry["suggested"] = dupes.suggest(box, new_ref, new_media, m, staged)
+        out.append(entry)
     return out
 
 
@@ -132,7 +135,7 @@ def report(box, policy: dict, sidecar: dict, status: str) -> dict:
         "source": sidecar.get("source"),
         "origin": sidecar.get("origin"),
         "file_problems": rules.check_file(policy["files"], sidecar["media"]),
-        "duplicates": duplicate_report(box, matches),
+        "duplicates": duplicate_report(box, matches, sha, sidecar["media"], staged=True),
         "requires": requirements(policy),
         "next": f"sticker-box commit {sha[:12]} --tag category=value ...",
     }
