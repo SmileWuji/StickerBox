@@ -131,6 +131,26 @@ Not scheduled; pick up when the owner asks.
       reading `search` with no words (newest first), `frames` for animations, the `origin` hints,
       and that nothing is moved without a decision. Suggested by the owner 2026-11-09.
 
+- [ ] Skill benchmarks: run the skills that make sense to measure with Claude Sonnet 5.5
+      (`claude-sonnet-5-5`) and Qwen3.5-9B (`qwen3.5:9b` via Ollama, or OpenRouter), on a fixed
+      private gold set of a few hundred hand-labelled stickers (in `testdata/private`, never
+      committed); record the numbers in a dated note. Suggested by the owner 2026-11-09.
+      - `tag-text`: has_text accuracy, exact match and character error rate against hand
+        transcriptions, watermark recall.
+      - `tag-emotion`, `tag-visual`: agreement with gold labels (semantic F1, as in the old
+        Tagger eval), and vocabulary reuse (new tags created per 100 stickers).
+      - `tag-character-series`: precision of names and abstention rate (a wrong name is worse
+        than none).
+      - `vocab-cleanup`: proposed merges against a hand-judged list of true twins and false pairs.
+      - `sticker-tagging` end to end, `sticker-box`, `gallery-maintenance`: task success on
+        scripted tasks (commits accepted first time, problems per commit, sensible `dupes`
+        decisions) rather than accuracy.
+      - Method: measure the noise floor first (the same model twice); prompts do not transfer
+        between models, so small models may need per-model skill wording (the owner's
+        `optimize-prompt-for-small-vlm` skill has the protocol). Prior art: the Observatory OCR
+        benchmark and the old Tagger evaluation (`../GuidedStickerTagger-SNAPSHOT-260920/eval/`).
+        DeepSeek, the model QQBot runs on, can be added as a third.
+
 ## 1. Scope
 
 In:
