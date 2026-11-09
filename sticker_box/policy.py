@@ -339,7 +339,8 @@ def describe(policy: dict) -> dict[str, list[str]]:
     dup = policy["duplicates"]
     lines = [f"Identical files are never stored twice. Images within {dup['phash_max_distance']} bits of perceptual hash count as near-duplicates."]
     if dup["sift"]:
-        lines.append(f"Local features (SIFT, {dup['sift']['keypoints']} keypoints) find crops, zooms and rotations of stored images (at least {dup['sift']['min_inliers']} matching points).")
+        lines.append(f"Local features (SIFT, {dup['sift']['keypoints']} keypoints) find crops, zooms and rotations of stored images (at least {dup['sift']['min_inliers']} matching points). "
+                     "SIFT misses some and links some unrelated images (measured: about 1 new image in 20 gets a false link, usually with few matching points), so look at both images before acting on a link.")
     lines.append("Duplicates and related images are reported, never refused or removed by the tool: each report comes "
                  "with suggested `sticker-box remove` commands, and whoever adds the image decides what to keep.")
     out["duplicates"] = lines

@@ -49,6 +49,10 @@ Change any rule afterwards with `sticker-box policy set <rule> '<json>'` (see
 | `STICKER_BOX_DECODE_SECONDS` | 120 | deadline for decoding one file |
 | `STICKER_BOX_SIFT_SECONDS` | 60 | deadline for local-feature matching on one write (gallery) |
 
+The gallery preset finds crops and rotations with SIFT local features. They miss some matches
+and link about one new image in twenty to an unrelated one; the README's "How duplicates are
+found" gives the measurements. Links are only reported, so this costs a look, never an image.
+
 ## Skills
 
 `skills/` holds generic agent instructions: `sticker-box` and `gallery-maintenance` for using

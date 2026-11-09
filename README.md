@@ -36,6 +36,38 @@ Presets: `telegram-sticker` (Telegram's sticker spec, open vocabulary to be clea
 rule can be changed with `sticker-box policy set`. Every command has `--help`; add `--json` for
 machine-readable output.
 
+## How duplicates are found
+
+Every image is compared with what the box already holds, in up to three ways. Whatever is
+found is reported with suggested `remove` commands; the tool never refuses or removes an image
+because of it (only the exact same file is never stored twice).
+
+| method | finds | misses |
+|---|---|---|
+| sha256 | the identical file | everything else |
+| perceptual hash (64-bit DCT pHash, per keyframe) | re-saved, resized or recompressed copies; a still taken from an animation | crops, rotations, large overlays |
+| SIFT local features (gallery preset only) | crops, zooms, rotations, a picture inside a screenshot, partial overlays | flat-colour art with few keypoints (skipped), heavy edits |
+
+SIFT (Lowe's scale-invariant feature transform, from OpenCV) matches small distinctive patches
+between two images and keeps a match only when enough of them agree on one rotation, zoom and
+shift. It has known limitations, measured on real stickers with generated variants
+(`261108-SIFT-TUNING.md`):
+
+- it misses some: 89% of variants were linked to their original (about 77% of tight crops and
+  of pictures inside screenshots, nearly all rotations, resizes and overlays);
+- it raises false links: about 6% of new images also got a link to an unrelated image, mostly
+  on flat or repetitive art and look-alike lettering; such links carry low `inliers` counts
+  (near the minimum of 12), while true ones are usually far higher;
+- it matches pixels, not meaning: the same character drawn in another pose is not linked,
+  while stickers that reuse the same drawing are (about 60% of the extra links in the
+  measurement); a small shared logo or watermark is usually not enough to link, a large one can
+  be;
+- it costs time: about 1.7 s per new image with 3,000 stored, capped by
+  `STICKER_BOX_SIFT_SECONDS`.
+
+So a link is evidence to look at, not a verdict. Sticker art is expected to be the hard case
+and photos and screenshots easier, but only stickers have been measured so far.
+
 ## For integrators and agents
 
 - `docs/integration.md`: install, calling conventions, exit codes, environment, security notes.

@@ -35,9 +35,6 @@ order:
 
 Needs your call:
 
-- **SIFT false alarms (decision 30).** About 6% of gallery inserts also get a spurious relation
-  to an unrelated image. Relations are reported, never acted on; re-measure on real gallery
-  images.
 - **QQBot wiring** is yours, per the plan: `docs/integration.md` lists install, environment,
   exit codes, the skills to copy, and how to label box content as data in a plugin.
 

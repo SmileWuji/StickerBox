@@ -143,3 +143,8 @@ under "For the owner", continue. Each entry says what to change if the owner dis
     human) decides. Only the exact same file (same sha256) is still never stored twice, since it
     is the stored item. Supersedes decision 12 and the `reject` parts of decisions 11 and 29.
     Boxes created earlier that still store `on_duplicate` have it ignored.
+
+37. **SIFT's limitations are accepted and documented** (owner, 2026-11-09). Decision 30's caveat
+    stands as a known property, not an open question: the repository README ("How duplicates are
+    found"), every box's generated README and `docs/integration.md` state that SIFT is used, what
+    it misses and how often it links unrelated images.
