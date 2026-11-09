@@ -151,6 +151,12 @@ Not scheduled; pick up when the owner asks.
         benchmark and the old Tagger evaluation (`../GuidedStickerTagger-SNAPSHOT-260920/eval/`).
         DeepSeek, the model QQBot runs on, can be added as a third.
 
+- [ ] Operations benchmark and baseline: build the benchmark designed in
+      `261109-OPS-BENCHMARK-DESIGN.md` (lookups, additions, changes, removals, maintenance,
+      concurrency and process start, at box sizes from 1k to 30k, on synthetic data), record the
+      baseline in a dated note, then decide which indexes or algorithm changes are worth it.
+      Suggested by the owner 2026-11-09; to be done when the backlog is cleaned up.
+
 ## 1. Scope
 
 In:

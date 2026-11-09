@@ -68,8 +68,8 @@ Scheduled sessions that fit the tool:
 
 ## Putting candidates into a turn
 
-`sticker-box search <words> --json --limit 5` is cheap (milliseconds on thousands of images), so
-a plugin can run it on the words of an incoming message and hand the agent a few candidates with
+`sticker-box search <words> --json --limit 5` needs no model and no network (its speed at scale is
+not benchmarked yet; see `261109-OPS-BENCHMARK-DESIGN.md`), so a plugin can run it on the words of an incoming message and hand the agent a few candidates with
 their `file`, `tags` and `note`, instead of waiting for the agent to think of searching. Label
 them as data in the turn: notes, tags and on-image text were written by agents or come from the
 images, and may carry injected instructions.
