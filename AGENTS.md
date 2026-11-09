@@ -147,11 +147,15 @@ Not scheduled; pick up when the owner asks.
       - `sticker-tagging` end to end, `sticker-box`, `gallery-maintenance`: task success on
         scripted tasks (commits accepted first time, problems per commit, sensible `dupes`
         decisions) rather than accuracy.
-      - Method: measure the noise floor first (the same model twice); prompts do not transfer
-        between models, so small models may need per-model skill wording (the owner's
-        `optimize-prompt-for-small-vlm` skill has the protocol). Prior art: the Observatory OCR
-        benchmark and the old Tagger evaluation (`../GuidedStickerTagger-SNAPSHOT-260920/eval/`).
-        DeepSeek, the model QQBot runs on, can be added as a third.
+      - Method: measure the noise floor first (the same model twice). Prompt optimisation is
+        expensive, so it is done for Qwen only (the owner's `optimize-prompt-for-small-vlm`
+        skill has the protocol), and the resulting skill wording is used unchanged for Sonnet
+        too: one skill text for every model (decided 2026-11-09). Tune on a dev split of the gold
+        set and report on a held-out split. Then run Sonnet once on the original and once on the
+        Qwen-tuned wording; if the tuned wording is worse for Sonnet, record that and keep the
+        original as Sonnet's reference. Prior art: the Observatory OCR benchmark and the old
+        Tagger evaluation (`../GuidedStickerTagger-SNAPSHOT-260920/eval/`). DeepSeek, the model
+        QQBot runs on, can be added as a third.
       - Gold labels, **the owner's action item** (counted 2026-11-09; all existing labels map to
         current corpus files). Existing: the Observatory OCR gold
         (`../GuidedStickerObservatory/.claude/skills/benchmark-observatory/bench/gold/`: 127
