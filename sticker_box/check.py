@@ -1,9 +1,15 @@
 """Audit: every stored item against the current policy, and the directory against the index.
 Reports; never changes anything."""
 
-from . import analysis, features, paths, refs, rules, stage, vocab
+from . import paths, refs, rules, stage, vocab
 from .errors import BoxError
 from .items import CORE, field_problems
+
+
+def _sha256(path) -> str:
+    from .analysis import sha256_file
+
+    return sha256_file(path)
 
 
 def check(box, deep: bool = False) -> dict:
@@ -26,7 +32,7 @@ def check(box, deep: bool = False) -> dict:
             pass
         elif not path.is_file():
             add({"problem": "missing_file", "message": f"{row['file']} is gone"})
-        elif deep and analysis.sha256_file(path) != sha:
+        elif deep and _sha256(path) != sha:
             add({"problem": "changed_file", "message": f"{row['file']} no longer matches its sha256"})
         info = {k: row[k] for k in ("format", "width", "height", "frames", "duration_ms", "fps", "codec", "bytes")}
         info.update(animated=bool(row["animated"]), audio=bool(row["audio"]))
@@ -50,6 +56,8 @@ def check(box, deep: bool = False) -> dict:
     orphans = [rel for rel in candidates if conn.execute("SELECT 1 FROM item WHERE file = ?", (rel,)).fetchone() is None]
     stale, featureless = [], []
     if policy["duplicates"]["sift"]:
+        from . import features
+
         stale = [r["sha256"] for r in conn.execute(
             "SELECT DISTINCT sha256 FROM feature WHERE extractor != ?", (features.EXTRACTOR,))]
         stale += [r["sha256"] for r in conn.execute(

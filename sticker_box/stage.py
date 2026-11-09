@@ -6,7 +6,7 @@ import os
 import uuid
 from pathlib import Path
 
-from . import analysis, clock, dupes, media, paths, rules
+from . import clock, paths, rules
 from .errors import BoxError
 
 SIDECAR_VERSION = 1
@@ -83,6 +83,8 @@ def requirements(policy: dict) -> dict:
 
 
 def duplicate_report(box, matches: list[dict], new_ref: str | None = None, new_media: dict | None = None, staged: bool = True) -> list[dict]:
+    from . import dupes
+
     out = []
     for m in matches:
         row = box.conn.execute("SELECT sha256, file FROM item WHERE sha256 = ?", (m["ref"],)).fetchone()
@@ -94,6 +96,8 @@ def duplicate_report(box, matches: list[dict], new_ref: str | None = None, new_m
 
 
 def analyse_into_sidecar(box, policy: dict, sha: str, file_name: str, extra: dict) -> dict:
+    from . import analysis
+
     path = box.temporary / file_name
     params = policy["analysis"]
     result = analysis.analyze(path, params, with_ocr=params["ocr_hint"])
@@ -118,6 +122,8 @@ def analyse_into_sidecar(box, policy: dict, sha: str, file_name: str, extra: dic
 
 
 def report(box, policy: dict, sidecar: dict, status: str) -> dict:
+    from . import dupes
+
     matches = dupes.find(box.conn, dupes.hex_hashes(sidecar), sidecar["media"]["animated"], policy["duplicates"]["phash_max_distance"])
     if sidecar.get("sift_matches"):
         seen = {m["ref"] for m in matches}
@@ -165,6 +171,8 @@ def copy_in(source: Path, dest: Path, box, nofollow: bool = False) -> int:
     is stored. With nofollow (files taken from another box) the file itself may not be a symlink."""
     import stat
 
+    from . import media
+
     flags = os.O_RDONLY | os.O_NONBLOCK | (os.O_NOFOLLOW if nofollow else 0)
     try:
         fd = os.open(source, flags)
@@ -195,7 +203,7 @@ def stage_file(box, path: Path, license: str | None = None, source: str | None =
                nofollow: bool = False) -> dict:
     """Never deletes stored items. Over a box limit it fails (exit 3) unless auto_cleanup, in
     which case it stages and lists what `commit --auto-cleanup` would remove."""
-    from . import limits
+    from . import analysis, limits, media
 
     policy = box.policy()
     tmp = box.temporary / f".incoming-{uuid.uuid4().hex}.part"
@@ -238,6 +246,8 @@ def stage_file(box, path: Path, license: str | None = None, source: str | None =
 
 def ensure_fresh(box, policy: dict, sha: str) -> dict:
     """The sidecar, re-analysed when the extractor or the analysis policy changed since staging."""
+    from . import analysis
+
     sidecar = load_sidecar(box, sha)
     if not staged_file(box, sidecar).is_file():
         raise BoxError("not_found", f"the staged file for {sha} is gone (temporary/ was cleaned); stage it again", ref=sha)

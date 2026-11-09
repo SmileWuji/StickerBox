@@ -5,9 +5,8 @@ import json
 import os
 import sqlite3
 
-from . import analysis, clock, db, dupes, paths, refs, rules, stage, vocab
+from . import clock, db, paths, refs, rules, stage, vocab
 from .errors import BoxError
-from .phash import to_hex
 
 LIMITS = {"license": 200, "source": 1000, "text": 4000, "description": 4000, "note": 2000}
 FIELD_LIMIT = 2000
@@ -63,7 +62,7 @@ def item_dict(box, sha: str) -> dict:
         "format": row["format"], "width": row["width"], "height": row["height"],
         "animated": bool(row["animated"]), "frames": row["frames"], "duration_ms": row["duration_ms"], "fps": row["fps"],
         "codec": row["codec"], "audio": bool(row["audio"]), "bytes": row["bytes"],
-        "phash": to_hex(db.to_unsigned(row["phash"])), "keyframes": keyframes,
+        "phash": f"{db.to_unsigned(row['phash']):016x}", "keyframes": keyframes,
         "added_at": row["added_at"], "updated_at": row["updated_at"], "expires_at": row["expires_at"], "expired": is_expired(row),
         "license": row["license"], "source": row["source"], "text": row["text"], "description": row["description"], "note": row["note"],
         "fields": fields,
@@ -73,6 +72,8 @@ def item_dict(box, sha: str) -> dict:
 
 
 def _matches(box, policy: dict, sidecar: dict, exclude: str | None = None) -> list[dict]:
+    from . import dupes
+
     matches = dupes.find(box.conn, dupes.hex_hashes(sidecar), sidecar["media"]["animated"], policy["duplicates"]["phash_max_distance"], exclude)
     seen = {m["ref"] for m in matches}
     for m in sidecar.get("sift_matches") or []:
@@ -87,7 +88,7 @@ def _fresh_analysis(box, policy: dict, src, sha: str) -> dict:
     """Metadata, keyframes, features and SIFT matches recomputed from the staged file itself at
     commit, so nothing stored comes from a sidecar someone could have edited. Only the OCR hint,
     the original name, licence and source are taken from staging."""
-    from . import features
+    from . import analysis, features
 
     result = analysis.analyze(src, policy["analysis"])
     out = {
@@ -109,6 +110,8 @@ def commit(box, ref: str, tags: list[str], defines: list[tuple[str, str]], value
     kind, sha = refs.resolve(box, ref)
     if kind == "item":
         raise BoxError("already_stored", f"{sha} is already stored; use `edit` to change it", ref=sha)
+    from . import analysis
+
     sidecar = stage.load_sidecar(box, sha)
     src = stage.staged_file(box, sidecar)
     if not src.is_file():

@@ -126,9 +126,11 @@ def timed(fn, repeat: int = REPEAT) -> dict:
 
 
 def as_process(argv: list[str]) -> dict:
-    """Wall time and peak memory of one command run as its own process, as an agent runs it."""
-    code = ("import resource, sys; from sticker_box.cli import main; c = main(sys.argv[1:]); "
-            "print(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss, file=sys.stderr)")
+    """Wall time and peak memory of one command run as its own process, as an agent runs it. Peak
+    memory is VmHWM, which starts afresh at exec; getrusage's maxrss would carry over the forking
+    parent's peak on Linux."""
+    code = ("import sys; from sticker_box.cli import main; c = main(sys.argv[1:]); "
+            "print(next(l.split()[1] for l in open('/proc/self/status') if l.startswith('VmHWM')), file=sys.stderr)")
     t0 = time.perf_counter()
     done = subprocess.run([sys.executable, "-c", code, "--json", *argv], capture_output=True, text=True)
     wall = time.perf_counter() - t0

@@ -182,7 +182,7 @@ Not scheduled; pick up when the owner asks.
       the CLI changes. Placeholders such as `<ref>` are replaced by dummy values first. Suggested
       2026-11-09; the skills were edited after the acceptance test and are not re-checked yet.
 
-- [ ] Operations benchmark and baseline: build the benchmark designed in
+- [x] Operations benchmark and baseline (done 2026-11-09, `261109-OPS-BASELINE.md`): build the benchmark designed in
       `261109-OPS-BENCHMARK-DESIGN.md` (lookups, additions, changes, removals, maintenance,
       concurrency and process start, at box sizes from 1k to 30k, on synthetic data), record the
       baseline in a dated note, then decide which indexes or algorithm changes are worth it.
@@ -210,9 +210,9 @@ names live in the git-ignored `testdata/private/CODENAMES.txt`.
   - 49 documented commands parse; no stale ones found; four known-stale samples are caught
 - [x] 2 `buffer-triage` skill written and listed in `skills/README.md`
 - [x] 3.1 `scripts/bench_ops.py` built per `261109-OPS-BENCHMARK-DESIGN.md`
-  - 3.2 running in the background: results to `testdata/private/bench/ops-*.json` (synthetic data)
-- [ ] 3.2 Baseline run on `/tmp` and the NTFS mount; `261109-OPS-BASELINE.md` written
-- [ ] 3.3 Small fixes for missed targets re-measured and recorded (or deferred with reasons)
+- [x] 3.2 Baseline run on `/tmp` and the NTFS mount; `261109-OPS-BASELINE.md` written
+- [x] 3.3 Small fixes for missed targets re-measured and recorded (or deferred with reasons)
+  - lazy imports: `show` 266 to 108 ms, `remove` 299 to 137 ms as processes; search above 10k, gallery double matching, `check` on 9p and OCR model load deferred with reasons
 - [x] 4.1 Benchmark sample drawn (~250, dev 150 / test 100) and existing human gold mapped
   - 264 stickers from 33 packs (dev 165, test 99) in `testdata/private/bench/sample.json`; human labels resolved: 127 has-text, 20 transcriptions, 150 character/series
 - [ ] 4.2 Sonnet labelling run (sequential batches) and vocabulary cleanup; Sonnet noise-floor re-run
