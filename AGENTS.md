@@ -172,6 +172,12 @@ Not scheduled; pick up when the owner asks.
         - End-to-end tool skills: none needed.
         - If a model pre-fills labels for correction, use one that is not being benchmarked.
 
+- [ ] Skill command check (not a benchmark): a unit test that extracts every `sticker-box ...`
+      command written in `skills/`, `docs/` and the README and parses it against the current CLI
+      (command, flags, argument order) without running it, so instructions cannot go stale when
+      the CLI changes. Placeholders such as `<ref>` are replaced by dummy values first. Suggested
+      2026-11-09; the skills were edited after the acceptance test and are not re-checked yet.
+
 - [ ] Operations benchmark and baseline: build the benchmark designed in
       `261109-OPS-BENCHMARK-DESIGN.md` (lookups, additions, changes, removals, maintenance,
       concurrency and process start, at box sizes from 1k to 30k, on synthetic data), record the
