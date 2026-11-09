@@ -201,10 +201,11 @@ the winning wording ships for every model; `tag-character-series`, `vocab-cleanu
 skills are smoke-tested with Sonnet only. Dataset names never appear in the repository; code
 names live in the git-ignored `testdata/private/CODENAMES.txt`.
 
-- [ ] 0.1 Manifest (path, size, sha256) of all four sticker sources written to the scratchpad
-- [ ] 0.2 Packs moved into `../GuidedSticker-Project-TestData-Consolidated/`
-- [ ] 0.3 Manifest verified against the consolidated directory (2,975 files, 33 packs); emptied source folders removed with `rmdir` only
-- [ ] 0.4 `testdata/private` relinked to the consolidated directory, code names updated; private tests pass
+- [x] 0.1 Manifest (path, size, sha256) of all four sticker sources written to the scratchpad
+- [x] 0.2 Packs moved into `../GuidedSticker-Project-TestData-Consolidated/`
+- [x] 0.3 Manifest verified against the consolidated directory (2,975 files, 33 packs); emptied source folders removed with `rmdir` only
+  - 3,008 files (2,975 stickers and 33 manifests) verified by sha256, 0 mismatches; the test-data repo keeps only its own files; no symlink at the old path (owner's choice)
+- [x] 0.4 `testdata/private` relinked to the consolidated directory, code names updated; private tests pass
 - [ ] 1 Skill command check test (`tests/test_skill_commands.py`), stale commands fixed
 - [ ] 2 `buffer-triage` skill written and listed in `skills/README.md`
 - [ ] 3.1 `scripts/bench_ops.py` built per `261109-OPS-BENCHMARK-DESIGN.md`
