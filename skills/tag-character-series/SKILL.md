@@ -37,6 +37,26 @@ together, because each one narrows the other.
 - **Neither is known:** leave both out. Mention a guess in `--description` ("looks like a
   character from …, unconfirmed"), never in the tags.
 
+## Looking it up
+
+bangumi.tv has an open API; fetch these URLs with whatever web tool you have (no key needed):
+
+1. Find the work: `https://api.bgm.tv/search/subject/<title or part of it>?type=2&responseGroup=small`
+   (`type=2` anime, `4` games, `1` books). Each result has `id`, the original `name` and the
+   Chinese `name_cn`, which is the `series` tag.
+2. Its cast: `https://api.bgm.tv/v0/subjects/<id>/characters`. Ignore entries whose `relation`
+   is `闲角` (unnamed extras); choose among `主角` and `配角` by comparing the picture with them.
+3. A character's Chinese name: `https://api.bgm.tv/v0/characters/<character id>`, field
+   `infobox`, key `简体中文名`. That is the `character` tag.
+
+Do not guess page URLs; search first. If the search finds nothing that fits, leave the tag out.
+
+## When the pack and the picture disagree
+
+A pack named after one character often contains others. Name a character only when the picture
+matches that character; the pack name alone is not enough. When they disagree, leave
+`character` out (the pack's `series` may still fit).
+
 ## Writing the tags
 
 - Use the canonical name in the box's language (the `zh-Hans` title or name for a Chinese box);

@@ -23,8 +23,12 @@ The vocabulary starts open: tags are created while stickers are added. After the
 2. Look for synonyms the review cannot see because they share no characters (生气 / 愤怒,
    开心 / 高兴): read the vocabulary in `README.md` category by category.
 3. Merge: `sticker-box tag merge <category> <from> <into>`. Every image moves to the second tag
-   and the first becomes an alias, so old habits still resolve.
+   and the first becomes an alias, so old habits still resolve. The `merge_hint` keeps the more used
+   tag, even on a tie; keep whichever name is clearer and write the command yourself.
+   Pack tags: two folder names are one pack only when their stickers share the art, the
+   characters and the format; numbered packs (`..._pack1`, `..._pack2`) are different packs.
 4. Add aliases for common other spellings and languages: `sticker-box tag alias emotion 无语 无言`.
+   Each word is a separate alias; quote one that contains spaces (`"Moon Bakery Club"`).
 5. Group: create the broader tag first if it does not exist
    (`sticker-box tag new emotion 负面 --means "不好的情绪的总称"`), then
    `sticker-box tag parent emotion 嫌弃 负面`. A search for the broader tag finds the narrower
