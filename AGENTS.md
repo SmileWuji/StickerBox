@@ -35,10 +35,6 @@ order:
 
 Needs your call:
 
-- **Do not push this history as it is.** Early commits contain phrases transcribed from
-  third-party stickers (my mistake, in test data) and third-party pack folder names. The tree
-  is clean now. Squash or filter the history before the first push; details and commands are
-  at the end of `261109-SECURITY-REVIEW-M8.md`.
 - **SIFT false alarms (decision 30).** About 6% of gallery inserts also get a spurious relation
   to an unrelated image. Relations are reported, never acted on; re-measure on real gallery
   images.
@@ -127,7 +123,7 @@ Tick a box in the same commit as the work. Bold lines are a milestone's exit cri
 - [x] `scripts/smoke.sh`: init each preset, stage, commit, search, frames, dupes, clean, against `testdata/generic/` and, when present, `testdata/private/`
 - [x] Integration notes for consumers: install line, environment variables, how to call it, what to put in a skill (`docs/integration.md`)
 - [x] **A new agent given only the skills and an empty box can bootstrap a sticker box from a corpus pack without help** (`261108-ACCEPTANCE-M8.md`; friction fixed)
-- [x] Security code review of the whole tool and the skills (§12), plus a scan of the history for third-party content before the repository goes public (`261109-SECURITY-REVIEW-M8.md`; the history itself still needs the owner's rewrite)
+- [x] Security code review of the whole tool and the skills (§12), plus a scan of the history for third-party content before the repository goes public (`261109-SECURITY-REVIEW-M8.md`; history scrubbed 2026-11-09)
 
 ## 1. Scope
 

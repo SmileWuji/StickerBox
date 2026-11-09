@@ -20,18 +20,12 @@ and the git history for open-source readiness. Experiments in a scratch director
 | 12 | A just-committed file could be listed as an orphan, and the skill called orphans safe to delete with a command that never deletes them | low | fixed: orphan candidates are re-checked against the index; the skill says to report them |
 | 13 | The docs said `pip install sticker-box`, a name nobody has registered on PyPI | low | fixed: install from a checkout; the docs warn about the unregistered name |
 
-## History before publishing
+## History (scrubbed 2026-11-09)
 
-Fixed in the tree, but still in the history of this local, never-pushed repository:
-
-- invented-looking test strings that are in fact transcriptions of third-party stickers:
-  `tests/test_search.py` from `7daea3f`, `tests/test_media.py` and `skills/tag-text/SKILL.md`
-  from `539e9af` and `b6f7123`;
-- third-party pack folder names: `scripts/corpus_check.py` in `539e9af`, the link script from
-  `3c945f4`, AGENTS.md and the design notes from `2475dd8` (which also names a watermark
-  handle).
-
-No sticker images, keys, chat data, QQ ids or openids were ever committed. The repository must
-not be pushed with this history. The simplest fix is to squash everything into one initial
-commit before the first push (`git checkout --orphan public && git commit`); `git filter-repo`
-can keep the history instead. Either is a rewrite, so it waits for the owner.
+The transcribed phrases and the third-party pack and watermark names were in early commits.
+With the owner's approval every commit was rewritten (`git filter-branch --index-filter` with a
+fixed replacement map, the same substitutions as the tree fix; commit messages and the synthetic
+test images untouched), then the old refs, reflogs and unreachable objects were purged. Checks
+afterwards: the final tree is byte-identical to before, all 17 commits remain, a search of every
+object in the repository finds none of the strings, and nothing unreachable is left. Commit hashes
+changed; nothing had been pushed. The rows marked "still in history" above no longer apply.
