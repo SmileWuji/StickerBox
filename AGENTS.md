@@ -127,7 +127,7 @@ Tick a box in the same commit as the work. Bold lines are a milestone's exit cri
 
 Not scheduled; pick up when the owner asks.
 
-- [ ] `skills/buffer-triage`: a short skill for a scheduled session over a buffer box. For each
+- [x] `skills/buffer-triage` (done 2026-11-09): a short skill for a scheduled session over a buffer box. For each
       item before it expires, decide: move it to the sticker box or the gallery
       (`stage --from`, then commit with that box's required tags), or let it expire. Covers
       reading `search` with no words (newest first), `frames` for animations, the `origin` hints,
@@ -208,7 +208,7 @@ names live in the git-ignored `testdata/private/CODENAMES.txt`.
 - [x] 0.4 `testdata/private` relinked to the consolidated directory, code names updated; private tests pass
 - [x] 1 Skill command check test (`tests/test_skill_commands.py`), stale commands fixed
   - 49 documented commands parse; no stale ones found; four known-stale samples are caught
-- [ ] 2 `buffer-triage` skill written and listed in `skills/README.md`
+- [x] 2 `buffer-triage` skill written and listed in `skills/README.md`
 - [ ] 3.1 `scripts/bench_ops.py` built per `261109-OPS-BENCHMARK-DESIGN.md`
 - [ ] 3.2 Baseline run on `/tmp` and the NTFS mount; `261109-OPS-BASELINE.md` written
 - [ ] 3.3 Small fixes for missed targets re-measured and recorded (or deferred with reasons)

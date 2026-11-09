@@ -7,6 +7,7 @@ paths, drop what the agent does not need). Two kinds:
 |---|---|---|
 | `sticker-box` | operating the tool: find, add, change, remove, read animations | every agent |
 | `gallery-maintenance` | duplicates, limits and cleanup of a gallery or buffer | agents that keep a gallery |
+| `buffer-triage` | deciding, before images expire, which buffer images move to the sticker box or gallery | agents that keep a buffer |
 | `sticker-tagging` | the order of work when adding a sticker, and the vocabulary rules | agents that tag |
 | `tag-text` | reading the text on an image, with the JSON answer it must produce | agents that tag |
 | `tag-emotion` | the `emotion` category | agents that tag |
