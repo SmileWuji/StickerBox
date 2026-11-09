@@ -27,9 +27,13 @@ empty, so that "no text" is a decision, not an omission.
 - Punctuation as drawn. When hand lettering makes width unclear, use full-width marks in Chinese
   and Japanese text (`！`, `？`, `～`, `……`) and half-width in Latin text.
 - Line breaks become one space; add no other spaces (none after a comma unless one is drawn).
-- All text, in reading order (top to bottom, left to right; right to left for vertical
-  Japanese), separated by single spaces.
-- Watermarks and handles (`@somechannel`) are text: include them. They are attribution.
+- All text, in reading order, separated by single spaces: blocks and bubbles from top to
+  bottom, left to right. Inside one block of vertical Chinese or Japanese text, read its
+  columns from right to left, each from top to bottom.
+- Readable sound effects (ドキドキ, 哈啊) are text; shapes you cannot read are not.
+- Readable logos and print on clothing count as text.
+- Watermarks and handles (`@somechannel`) are text: include them. They are attribution. A small
+  handle in a corner is enough: if it is the only writing, the answer is still has_text true.
 - Not text: decorative strokes, speed lines, sound-effect shapes too stylised to read, letters
   on a shirt pattern you cannot read. When unsure whether marks are writing, leave them out.
 - For an animation, read the contact sheet from `sticker-box frames`; include text that

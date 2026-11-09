@@ -120,13 +120,16 @@ model, not to the skill text.
 |---|---|---|---|---|
 | v9 = v8 without the lone-watermark line | 0.897 | 0.5 | 0.133 | 0.737 |
 | v10 = v8 without the partly-legible-watermark line | 0.910 | 0.6 | 0.134 | 0.737 |
-| v11 = v10 with the vertical-text line scoped to one block (see section 7) | *pending* | | | |
+| v11 = v10 with the vertical-text line scoped to one block (see section 7) | 0.897 | 0.6 | 0.134 | 0.737 |
 
 Every difference here is one or two stickers, the size of the noise. v10 is best or tied on
 every metric, and its added rules answer the agents' friction without costing Qwen anything, so
 it is the candidate. The partly-legible-watermark line was dropped: it cost one watermark.
 
-*Pending*: v11 on dev; v0 and the shipped wording once on test.
+v11 was accepted on a rule set before its run (no worse than v10 by more than one sticker on
+has-text, CER not worse): it costs one sticker. It is the shipped wording.
+
+*Pending*: v0 and v11 once on test.
 
 ## 6. Qwen: `tag-emotion` and `tag-visual`
 
