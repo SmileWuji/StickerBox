@@ -83,7 +83,7 @@ def test_reindex_rebuilds_the_same_relations(gallery, run_cli, scene):
     run_cli("commit", s["ref"], "--box", str(root), "--license", "unknown")
     before = run_cli("show", s["ref"], "--box", str(root))["relations"]
     out = run_cli("reindex", "--box", str(root))
-    assert out == {"items": 2, "relations": 1, "with_features": 2}
+    assert out == {"items": 2, "relations": 1, "with_features": 2, "incomplete_matching": 0, "failed": []}
     after = run_cli("show", s["ref"], "--box", str(root))["relations"]
     assert [(r["ref"], r["kind"]) for r in after] == [(r["ref"], r["kind"]) for r in before]
 

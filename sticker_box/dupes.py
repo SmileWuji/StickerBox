@@ -102,9 +102,11 @@ def clusters(box, kinds: set[str] | None = None) -> list[dict]:
         rows = [r for r in rows if r is not None]
         keeper = max(rows, key=lambda r: (r["width"] * r["height"], r["animated"], [-ord(c) for c in r["added_at"]]))
         member_set = {r["sha256"] for r in rows}
+        from . import paths
+
         out.append({
             "keeper": keeper["sha256"],
-            "members": [{"ref": r["sha256"], "file": str(box.root / r["file"]), "size": f"{r['width']}x{r['height']}",
+            "members": [{"ref": r["sha256"], "file": paths.safe_stored_str(box, r), "size": f"{r['width']}x{r['height']}",
                          "bytes": r["bytes"], "added_at": r["added_at"], "animated": bool(r["animated"])} for r in rows],
             "links": [{"a": r["a"], "b": r["b"], "kind": r["kind"], "how": _edge_summary(r["kind"], r["method"], r["score"], r["transform"])}
                       for r in rels if r["a"] in member_set],
@@ -115,41 +117,52 @@ def clusters(box, kinds: set[str] | None = None) -> list[dict]:
 
 def reindex(box) -> dict:
     """Rebuild keyframes, features and relations from the stored files, oldest first, so every
-    relation points from a newer item to an older one, as at commit."""
+    relation points from a newer item to an older one, as at commit. Each item is replaced in its
+    own transaction, so a failure or an interruption leaves the rest of the box as it was; failed
+    items are reported and keep their old data."""
     import json
 
-    from . import analysis, clock, features
+    from . import analysis, clock, features, paths
+    from .errors import BoxError
 
     conn = box.conn
     policy = box.policy()
     sift = policy["duplicates"]["sift"]
     rows = conn.execute("SELECT sha256, file, animated, width, height FROM item ORDER BY added_at, sha256").fetchall()
-    with db.transaction(conn):
-        conn.execute("DELETE FROM relation")
-        conn.execute("DELETE FROM feature")
     done: set[str] = set()
-    counts = {"items": 0, "relations": 0, "with_features": 0}
+    counts = {"items": 0, "relations": 0, "with_features": 0, "incomplete_matching": 0, "failed": []}
     for row in rows:
         sha = row["sha256"]
-        result = analysis.analyze(box.root / row["file"], policy["analysis"])
+        try:
+            result = analysis.analyze(paths.stored_path(box, row), policy["analysis"])
+        except BoxError as err:
+            counts["failed"].append({"ref": sha, "error": err.code, "message": err.message})
+            continue
         hashes = [k.phash for k in result.keyframes]
         matches = [m for m in find(conn, hashes, bool(row["animated"]), policy["duplicates"]["phash_max_distance"], exclude=sha) if m["ref"] in done]
         sets = features.compute(result, policy) if sift else []
         if sift:
             seen = {m["ref"] for m in matches}
-            matches += [m for m in features.match(conn, sets, (row["width"], row["height"]), sift, exclude=sha) if m["ref"] not in seen]
+            found, complete = features.match(conn, sets, (row["width"], row["height"]), sift, exclude=sha, only=done)
+            matches += [m for m in found if m["ref"] not in seen]
+            counts["incomplete_matching"] += not complete
         stamp = clock.stamp()
         with db.transaction(conn):
+            if conn.execute("SELECT 1 FROM item WHERE sha256 = ?", (sha,)).fetchone() is None:
+                continue
             conn.execute("DELETE FROM keyframe WHERE sha256 = ?", (sha,))
+            conn.execute("DELETE FROM feature WHERE sha256 = ?", (sha,))
+            conn.execute("DELETE FROM relation WHERE a = ?", (sha,))
             conn.executemany("INSERT INTO keyframe (sha256, idx, frame_no, t_ms, phash) VALUES (?, ?, ?, ?, ?)",
                              [(sha, i, k.frame_no, k.t_ms, db.to_signed(k.phash)) for i, k in enumerate(result.keyframes)])
             conn.execute("UPDATE item SET phash = ? WHERE sha256 = ?", (db.to_signed(result.phash), sha))
             conn.executemany("INSERT INTO feature (sha256, frame, extractor, n, kp, desc) VALUES (?, ?, ?, ?, ?, ?)",
                              [(sha, idx, features.EXTRACTOR, int(kp.shape[0]), kp.astype(np.float32).tobytes(), desc.tobytes()) for idx, kp, desc in sets])
             conn.executemany(
-                "INSERT OR REPLACE INTO relation (a, b, kind, method, score, transform, found_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                "INSERT OR REPLACE INTO relation (a, b, kind, method, score, transform, found_at) "
+                "SELECT ?, ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM item WHERE sha256 = ?)",
                 [(sha, m["ref"], m["kind"], m.get("method", "phash"), m.get("distance", m.get("inliers")),
-                  json.dumps(m["transform"]) if m.get("transform") else None, stamp) for m in matches],
+                  json.dumps(m["transform"]) if m.get("transform") else None, stamp, m["ref"]) for m in matches],
             )
         done.add(sha)
         counts["items"] += 1

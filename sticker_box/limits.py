@@ -51,15 +51,23 @@ def plan_room(box, policy: dict, add_bytes: int, add_items: int, auto: bool) -> 
 
 
 def remove_items(box, shas: list[str], reason: str) -> list[dict]:
+    """Deletes rows, then their files, but only files at a path the tool itself writes; a row
+    pointing anywhere else loses its row and is reported, and nothing outside the box is touched."""
+    from . import paths
+
     removed = []
     for sha in shas:
-        row = box.conn.execute("SELECT file, added_at, expires_at FROM item WHERE sha256 = ?", (sha,)).fetchone()
+        row = box.conn.execute("SELECT sha256, file, added_at, expires_at FROM item WHERE sha256 = ?", (sha,)).fetchone()
         if row is None:
             continue
         with db.transaction(box.conn):
             box.conn.execute("DELETE FROM item WHERE sha256 = ?", (sha,))
-        (box.root / row["file"]).unlink(missing_ok=True)
-        removed.append({"ref": sha, "reason": reason, "added_at": row["added_at"], "expires_at": row["expires_at"]})
+        entry = {"ref": sha, "reason": reason, "added_at": row["added_at"], "expires_at": row["expires_at"]}
+        try:
+            paths.stored_path(box, row).unlink(missing_ok=True)
+        except BoxError as err:
+            entry["file_left"] = err.message
+        removed.append(entry)
     return removed
 
 
@@ -74,9 +82,13 @@ def clean(box, everything: bool = False) -> dict:
     cutoff = time.time() - grace
     files = []
     for path in sorted(box.temporary.iterdir()):
-        if not path.is_file():
+        try:
+            st = path.lstat()
+        except FileNotFoundError:
             continue
-        if everything or path.stat().st_mtime <= cutoff:
+        if path.is_dir() and not path.is_symlink():
+            continue
+        if everything or st.st_mtime <= cutoff:
             path.unlink(missing_ok=True)
             files.append(path.name)
     removed = remove_items(box, expired(box), "expired")

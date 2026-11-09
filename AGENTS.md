@@ -98,8 +98,7 @@ Tick a box in the same commit as the work. Bold lines are a milestone's exit cri
 - [x] `stage --from <box> <ref>`: staged in the destination (analysed again under its policy), licence and source carried over, text, description and note as commit defaults, tags as hints; validated at `commit`
 - [x] `check`: every item against the current policy, orphan files, missing files, stale features
 - [x] **A buffer fills, refuses a write loudly, recovers with `--auto-cleanup`, and an item transferred from it into a sticker box passes only once the required tags are given**
-- [ ] Security code review of M6 and M7 (§12); findings fixed or recorded
-  - running (subagent); next: fix or record its findings in `261108-SECURITY-REVIEW-M7.md`
+- [x] Security code review of M6 and M7 (§12); findings fixed or recorded (`261108-SECURITY-REVIEW-M7.md`: 9 findings, all fixed with tests)
 
 ### M8. Skills, docs, smoke
 - [x] `skills/` (§10): `sticker-box` usage, one skill per `telegram-sticker` tag category including the OCR skill with its JSON shape and examples, `vocab-cleanup`, `gallery-maintenance`

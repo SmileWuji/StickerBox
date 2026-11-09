@@ -153,7 +153,9 @@ def cmd_frames(args) -> dict:
         box = open_box(args)
         kind, sha = refs.resolve(box, args.ref)
         if kind == "item":
-            path = box.root / box.conn.execute("SELECT file FROM item WHERE sha256 = ?", (sha,)).fetchone()["file"]
+            from . import paths
+
+            path = paths.stored_path(box, box.conn.execute("SELECT sha256, file FROM item WHERE sha256 = ?", (sha,)).fetchone())
         else:
             path = stage_mod.staged_file(box, stage_mod.load_sidecar(box, sha))
     result = analysis.analyze(path, policy.DEFAULTS["analysis"])

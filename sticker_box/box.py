@@ -13,8 +13,9 @@ NOTES_LIMIT = 20_000
 
 
 class Box:
-    def __init__(self, root: Path):
+    def __init__(self, root: Path, readonly: bool = False):
         self.root = root
+        self.readonly = readonly
         self.temporary = root / "temporary"
         self.persistent = root / "persistent"
         self.db_path = root / DB_NAME
@@ -24,7 +25,7 @@ class Box:
     @property
     def conn(self) -> sqlite3.Connection:
         if self._conn is None:
-            self._conn = db.connect(self.db_path)
+            self._conn = db.connect_readonly(self.db_path) if self.readonly else db.connect(self.db_path)
         return self._conn
 
     def close(self) -> None:
@@ -84,14 +85,20 @@ class Box:
         return box
 
     @classmethod
-    def open(cls, path: Path) -> "Box":
+    def open(cls, path: Path, readonly: bool = False) -> "Box":
+        """readonly: for a box the tool only reads from (`stage --from`), which may have been made
+        by someone else; its database is opened read-only with a time limit on every query."""
         path = path.resolve()
-        if not (path / DB_NAME).is_file():
+        if not (path / DB_NAME).is_file() or (path / DB_NAME).is_symlink():
             raise BoxError("no_box", f"{path} is not a sticker box (no {DB_NAME})")
-        box = cls(path)
+        box = cls(path, readonly)
+        for sub in (box.temporary, box.persistent):
+            if sub.is_symlink() or (sub.exists() and not sub.is_dir()):
+                raise BoxError("unsafe_box", f"{sub} is a symbolic link or not a directory; the tool will not work through it")
         db.check_version(box.conn)
-        box.temporary.mkdir(exist_ok=True)
-        box.persistent.mkdir(exist_ok=True)
+        if not readonly:
+            box.temporary.mkdir(exist_ok=True)
+            box.persistent.mkdir(exist_ok=True)
         return box
 
 

@@ -91,7 +91,7 @@ def main() -> None:
             if not sets:
                 skipped += 1
                 continue
-            for m in features.match(conn, sets, (img.shape[1], img.shape[0]), SIFT):
+            for m in features.match(conn, sets, (img.shape[1], img.shape[0]), SIFT)[0]:
                 if m["ref"] == sha:
                     true_inl.setdefault(name, []).append(m["inliers"])
                     found.setdefault(name, []).append(m["kind"])

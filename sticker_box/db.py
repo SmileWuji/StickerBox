@@ -109,6 +109,36 @@ def connect(path: Path) -> sqlite3.Connection:
     return conn
 
 
+QUERY_SECONDS = 10.0
+TABLES = ("meta", "item", "item_field", "tag", "tag_alias", "item_tag")
+
+
+def connect_readonly(path: Path) -> sqlite3.Connection:
+    """For another box's database, which may be hostile: read-only, no writes even to temp
+    tables, the tables the tool reads must be real tables, and every statement is cut off after
+    QUERY_SECONDS."""
+    import time
+    from urllib.parse import quote
+
+    conn = sqlite3.connect(f"file:{quote(str(path))}?mode=ro", uri=True, timeout=5, isolation_level=None)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA query_only = ON")
+    kinds = {r["name"]: r["type"] for r in conn.execute(
+        f"SELECT name, type FROM sqlite_master WHERE name IN ({','.join('?' * len(TABLES))})", TABLES)}
+    if any(kinds.get(t) != "table" for t in TABLES):
+        conn.close()
+        raise BoxError("unsafe_box", f"{path} does not have the tables a box has")
+    state = {"end": None}
+
+    def guard():
+        if state["end"] is None:
+            state["end"] = time.monotonic() + QUERY_SECONDS
+        return 1 if time.monotonic() > state["end"] else 0
+
+    conn.set_progress_handler(guard, 10_000)
+    return conn
+
+
 def create(conn: sqlite3.Connection) -> None:
     conn.executescript(f"BEGIN; {SCHEMA} INSERT INTO meta (key, value) VALUES ('schema_version', '{SCHEMA_VERSION}'); COMMIT;")
 

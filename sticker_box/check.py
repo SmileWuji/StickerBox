@@ -1,7 +1,8 @@
 """Audit: every stored item against the current policy, and the directory against the index.
 Reports; never changes anything."""
 
-from . import analysis, features, refs, rules, stage, vocab
+from . import analysis, features, paths, refs, rules, stage, vocab
+from .errors import BoxError
 from .items import CORE, field_problems
 
 
@@ -16,8 +17,14 @@ def check(box, deep: bool = False) -> dict:
         def add(problem: dict):
             problems.append({"ref": sha, **problem})
 
-        path = box.root / row["file"]
-        if not path.is_file():
+        try:
+            path = paths.stored_path(box, row)
+        except BoxError as err:
+            add({"problem": "bad_path", "message": err.message})
+            path = None
+        if path is None:
+            pass
+        elif not path.is_file():
             add({"problem": "missing_file", "message": f"{row['file']} is gone"})
         elif deep and analysis.sha256_file(path) != sha:
             add({"problem": "changed_file", "message": f"{row['file']} no longer matches its sha256"})
@@ -38,12 +45,17 @@ def check(box, deep: bool = False) -> dict:
                 add({"problem": "retired_tag", "tag": f"{t['category']}={t['value']}", "message": "carries a retired tag"})
         for p in vocab.cardinality(policy, labels):
             add(p)
-    known = {r["file"] for r in rows}
+    known = {r["file"] for r in rows if paths.stored_rel(r)}
     orphans = sorted(str(p.relative_to(box.root)) for p in box.persistent.rglob("*") if p.is_file() and str(p.relative_to(box.root)) not in known)
-    stale = []
+    stale, featureless = [], []
     if policy["duplicates"]["sift"]:
         stale = [r["sha256"] for r in conn.execute(
             "SELECT DISTINCT sha256 FROM feature WHERE extractor != ?", (features.EXTRACTOR,))]
+        stale += [r["sha256"] for r in conn.execute(
+            "SELECT DISTINCT sha256 FROM feature WHERE extractor = ? AND (n < 1 OR length(desc) != n * 128 OR length(kp) != n * 8)",
+            (features.EXTRACTOR,)) if r["sha256"] not in stale]
+        featureless = [r["sha256"] for r in conn.execute(
+            "SELECT sha256 FROM item WHERE sha256 NOT IN (SELECT sha256 FROM feature WHERE extractor = ?)", (features.EXTRACTOR,))]
     staged_broken = []
     for sha in refs.staged_shas(box):
         try:
@@ -62,6 +74,7 @@ def check(box, deep: bool = False) -> dict:
         "problems": problems,
         "orphan_files": orphans,
         "stale_features": stale,
+        "items_without_features": len(featureless),
         "broken_staged": staged_broken,
         "hint": "orphan files and broken staged files are safe to delete; `reindex` refreshes stale features; fix item problems with `edit`" if (problems or orphans or stale or staged_broken) else None,
     }

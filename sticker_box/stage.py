@@ -3,26 +3,49 @@
 
 import json
 import os
-import shutil
 import uuid
 from pathlib import Path
 
-from . import analysis, clock, dupes, media, rules
+from . import analysis, clock, dupes, media, paths, rules
 from .errors import BoxError
 
 SIDECAR_VERSION = 1
+SIDECAR_LIMIT = 2_000_000
 
 
 def sidecar_path(box, sha: str) -> Path:
-    return box.temporary / f"{sha}.json"
+    return box.temporary / f"{paths.check_sha(sha)}.json"
+
+
+def _corrupt(sha: str, why: str) -> BoxError:
+    return BoxError("corrupt_staging", f"the staging data for {sha[:12]} is not the tool's ({why}); remove it with `sticker-box remove {sha[:12]}` and stage the file again", ref=sha)
 
 
 def load_sidecar(box, sha: str) -> dict:
+    """The sidecar, checked: its sha256 and file name must be the ones derived from `sha`, so a
+    planted sidecar cannot name a path outside temporary/."""
     path = sidecar_path(box, sha)
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        if path.is_symlink() or path.stat().st_size > SIDECAR_LIMIT:
+            raise _corrupt(sha, "unsafe file")
+        data = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError:
         raise BoxError("not_found", f"{sha} is not staged (it may have been cleaned); stage the file again", ref=sha) from None
+    except (ValueError, UnicodeDecodeError):
+        raise _corrupt(sha, "not JSON") from None
+    if not isinstance(data, dict) or data.get("sha256") != sha:
+        raise _corrupt(sha, "wrong sha256")
+    if data.get("file") not in {paths.staged_name(sha, ext) for ext in paths.EXTS}:
+        raise _corrupt(sha, "wrong file name")
+    m = data.get("media")
+    if not isinstance(m, dict) or not isinstance(data.get("keyframes"), list) or not data["keyframes"]:
+        raise _corrupt(sha, "no analysis")
+    try:
+        [int(k["phash"], 16) for k in data["keyframes"]]
+        int(data["phash"], 16)
+    except (KeyError, TypeError, ValueError):
+        raise _corrupt(sha, "bad hashes") from None
+    return data
 
 
 def write_sidecar(box, data: dict) -> None:
@@ -33,7 +56,9 @@ def write_sidecar(box, data: dict) -> None:
 
 
 def staged_file(box, sidecar: dict) -> Path:
-    return box.temporary / sidecar["file"]
+    sha = paths.check_sha(sidecar["sha256"])
+    ext = str(sidecar["file"]).rsplit(".", 1)[-1]
+    return box.temporary / paths.staged_name(sha, ext)
 
 
 def requirements(policy: dict) -> dict:
@@ -47,8 +72,8 @@ def requirements(policy: dict) -> dict:
 def duplicate_report(box, matches: list[dict]) -> list[dict]:
     out = []
     for m in matches:
-        row = box.conn.execute("SELECT file FROM item WHERE sha256 = ?", (m["ref"],)).fetchone()
-        out.append({**m, "file": str(box.root / row["file"]) if row else None})
+        row = box.conn.execute("SELECT sha256, file FROM item WHERE sha256 = ?", (m["ref"],)).fetchone()
+        out.append({**m, "file": paths.safe_stored_str(box, row) if row else None})
     return out
 
 
@@ -103,8 +128,15 @@ def report(box, policy: dict, sidecar: dict, status: str) -> dict:
 MAX_TEMPORARY_BYTES = int(os.environ.get("STICKER_BOX_MAX_TEMPORARY_MB", "1024")) * 1024 * 1024
 
 
+def _size(path: Path) -> int:
+    try:
+        return path.lstat().st_size
+    except FileNotFoundError:
+        return 0
+
+
 def _temporary_room(box, adding: int) -> None:
-    used = sum(p.stat().st_size for p in box.temporary.iterdir() if p.is_file())
+    used = sum(_size(p) for p in box.temporary.iterdir())
     if used + adding > MAX_TEMPORARY_BYTES:
         from .errors import EXIT_LIMIT
 
@@ -112,24 +144,56 @@ def _temporary_room(box, adding: int) -> None:
                        exit_code=EXIT_LIMIT, used=used, limit=MAX_TEMPORARY_BYTES)
 
 
-def stage_file(box, path: Path, license: str | None = None, source: str | None = None, auto_cleanup: bool = False) -> dict:
+def copy_in(source: Path, dest: Path, box, nofollow: bool = False) -> int:
+    """Copies a regular file into the box before anything inspects it, so what is checked is what
+    is stored. With nofollow (files taken from another box) the file itself may not be a symlink."""
+    import stat
+
+    flags = os.O_RDONLY | (os.O_NOFOLLOW if nofollow else 0)
+    try:
+        fd = os.open(source, flags)
+    except FileNotFoundError:
+        raise BoxError("not_found", f"{source} is not a file") from None
+    except OSError as err:
+        raise BoxError("not_found", f"cannot read {source}: {err.strerror}") from None
+    with os.fdopen(fd, "rb") as src:
+        st = os.fstat(src.fileno())
+        if not stat.S_ISREG(st.st_mode):
+            raise BoxError("not_found", f"{source} is not a regular file")
+        if st.st_size > media.MAX_FILE_BYTES:
+            raise BoxError("file_too_large", f"{source.name} is {st.st_size} bytes; the tool reads at most {media.MAX_FILE_BYTES}", bytes=st.st_size)
+        _temporary_room(box, st.st_size)
+        copied = 0
+        with open(dest, "wb") as out:
+            while chunk := src.read(1 << 20):
+                copied += len(chunk)
+                if copied > media.MAX_FILE_BYTES:
+                    raise BoxError("file_too_large", f"{source.name} grew past {media.MAX_FILE_BYTES} bytes while being read")
+                out.write(chunk)
+    return copied
+
+
+def stage_file(box, path: Path, license: str | None = None, source: str | None = None, auto_cleanup: bool = False,
+               nofollow: bool = False) -> dict:
     """Never deletes stored items. Over a box limit it fails (exit 3) unless auto_cleanup, in
     which case it stages and lists what `commit --auto-cleanup` would remove."""
     from . import limits
 
-    fmt = media.detect(path)
     policy = box.policy()
-    size = path.stat().st_size
-    _temporary_room(box, size)
     tmp = box.temporary / f".incoming-{uuid.uuid4().hex}.part"
     try:
-        shutil.copyfile(path, tmp)
+        size = copy_in(path, tmp, box, nofollow)
+        try:
+            fmt = media.detect(tmp)
+        except BoxError as err:
+            err.message = err.message.replace(tmp.name, path.name)
+            raise
         sha = analysis.sha256_file(tmp)
-        stored = box.conn.execute("SELECT file FROM item WHERE sha256 = ?", (sha,)).fetchone()
+        stored = box.conn.execute("SELECT sha256, file FROM item WHERE sha256 = ?", (sha,)).fetchone()
         if stored:
-            return {"status": "already_stored", "ref": sha, "name": path.name, "file": str(box.root / stored["file"])}
+            return {"status": "already_stored", "ref": sha, "name": path.name, "file": paths.safe_stored_str(box, stored)}
         planned = limits.plan_room(box, policy, size, 1, auto_cleanup)
-        file_name = f"{sha}.{media.EXTENSIONS[fmt]}"
+        file_name = paths.staged_name(sha, media.EXTENSIONS[fmt])
         existing = sidecar_path(box, sha)
         if existing.is_file() and (box.temporary / file_name).is_file():
             sidecar = load_sidecar(box, sha)
@@ -161,10 +225,14 @@ def ensure_fresh(box, policy: dict, sha: str) -> dict:
     if not staged_file(box, sidecar).is_file():
         raise BoxError("not_found", f"the staged file for {sha} is gone (temporary/ was cleaned); stage it again", ref=sha)
     stale = sidecar.get("extractor") != analysis.EXTRACTOR or sidecar.get("analysis_params") != policy["analysis"]
-    if policy["duplicates"]["sift"]:
+    if policy["duplicates"]["sift"] and not stale:
         from . import features
 
-        stale = stale or not features.npz_path(box, sha).is_file() or (sidecar.get("features") or {}).get("extractor") != features.EXTRACTOR
+        stale = (sidecar.get("features") or {}).get("extractor") != features.EXTRACTOR
+        try:
+            features.load(features.npz_path(box, sha))
+        except BoxError:
+            stale = True
     if stale:
         keep = {k: sidecar.get(k) for k in ("name", "license", "source", "origin")}
         sidecar = analyse_into_sidecar(box, policy, sha, sidecar["file"], keep)
@@ -172,8 +240,8 @@ def ensure_fresh(box, policy: dict, sha: str) -> dict:
 
 
 def remove(box, sha: str) -> None:
-    sidecar = load_sidecar(box, sha)
-    staged_file(box, sidecar).unlink(missing_ok=True)
+    """Removes every staged file of `sha`, whether or not its sidecar is intact."""
+    paths.check_sha(sha)
     for extra in box.temporary.glob(f"{sha}.*"):
         extra.unlink(missing_ok=True)
 

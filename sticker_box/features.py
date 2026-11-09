@@ -6,6 +6,8 @@ pictures relate. The ratio test is kept out of the vote: with two stored copies 
 best and second-best would tie and every match would be thrown away."""
 
 import math
+import os
+import time
 import uuid
 from pathlib import Path
 
@@ -23,6 +25,10 @@ SAME = 0.85
 ROTATION_DEG = 8.0
 MIN_SPREAD = 0.04
 SCALE_RANGE = (0.05, 20.0)
+MAX_KEYPOINTS = 2000
+MAX_SETS = 16
+MAX_NPZ_BYTES = 8 * 1024 * 1024
+SIFT_SECONDS = float(os.environ.get("STICKER_BOX_SIFT_SECONDS", "60"))
 
 
 def extract(rgb: np.ndarray, orig_size: tuple[int, int], keypoints: int) -> tuple[np.ndarray, np.ndarray] | None:
@@ -75,9 +81,41 @@ def save(path: Path, sets: list) -> None:
     tmp.replace(path)
 
 
+def _valid_set(kp, desc) -> bool:
+    return (isinstance(kp, np.ndarray) and isinstance(desc, np.ndarray) and kp.dtype == np.float32 and desc.dtype == np.uint8
+            and kp.ndim == 2 and kp.shape[1] == 2 and desc.shape == (kp.shape[0], 128)
+            and 1 <= kp.shape[0] <= MAX_KEYPOINTS and bool(np.isfinite(kp).all()))
+
+
 def load(path: Path) -> list:
-    with np.load(path) as data:
-        return [(int(data[f"idx{i}"][0]), data[f"kp{i}"], data[f"desc{i}"]) for i in range(int(data["n"][0]))]
+    """Feature sets from a staged .npz, checked before use: the file may have been planted or
+    damaged, and a wrong shape would otherwise break every later match in the box."""
+    from .errors import BoxError
+
+    bad = BoxError("corrupt_staging", f"{path.name} is not a feature file this tool wrote")
+    try:
+        if path.is_symlink() or path.stat().st_size > MAX_NPZ_BYTES:
+            raise bad
+        with np.load(path, allow_pickle=False) as data:
+            if sum(info.file_size for info in data.zip.infolist()) > MAX_NPZ_BYTES:
+                raise bad
+            n = int(data["n"][0])
+            if not 0 <= n <= MAX_SETS:
+                raise bad
+            sets = [(int(data[f"idx{i}"][0]), data[f"kp{i}"], data[f"desc{i}"]) for i in range(n)]
+    except BoxError:
+        raise
+    except Exception:
+        raise bad from None
+    if not all(_valid_set(kp, desc) for _, kp, desc in sets):
+        raise bad
+    return sets
+
+
+def _row_ok(r) -> bool:
+    n = r["n"]
+    return isinstance(n, int) and 1 <= n <= MAX_KEYPOINTS and isinstance(r["desc"], bytes) and len(r["desc"]) == n * 128 \
+        and ("kp" not in r.keys() or (isinstance(r["kp"], bytes) and len(r["kp"]) == n * 8))
 
 
 def _stored_batches(conn, exclude: str | None):
@@ -85,7 +123,7 @@ def _stored_batches(conn, exclude: str | None):
     matrix stays near QUERY_CHUNK x BATCH_DESCRIPTORS floats whatever the keypoint setting."""
     batch, count = [], 0
     for r in conn.execute("SELECT sha256, frame, n, desc FROM feature WHERE extractor = ? ORDER BY rowid", (EXTRACTOR,)):
-        if r["sha256"] == exclude:
+        if r["sha256"] == exclude or not _row_ok(r):
             continue
         batch.append(r)
         count += r["n"]
@@ -96,11 +134,17 @@ def _stored_batches(conn, exclude: str | None):
         yield batch
 
 
-def vote(conn, sets: list, exclude: str | None = None) -> dict[str, int]:
+class Timeout(Exception):
+    pass
+
+
+def vote(conn, sets: list, exclude: str | None = None, deadline: float | None = None) -> dict[str, int]:
     votes: dict[str, int] = {}
     queries = [desc.astype(np.float32) for _, _, desc in sets]
     q_norms = [(q * q).sum(1)[:, None] for q in queries]
     for rows in _stored_batches(conn, exclude):
+        if deadline is not None and time.monotonic() > deadline:
+            raise Timeout(votes)
         descs = [np.frombuffer(r["desc"], np.uint8).reshape(r["n"], 128) for r in rows]
         stack = np.vstack(descs).astype(np.float32)
         owners = np.repeat(np.arange(len(rows)), [d.shape[0] for d in descs])
@@ -203,17 +247,31 @@ def verify(a_sets: list, b_sets: list, ratio: float, size_a: tuple[int, int], si
 
 def _stored_sets(conn, sha: str) -> list:
     return [(r["frame"], np.frombuffer(r["kp"], np.float32).reshape(r["n"], 2), np.frombuffer(r["desc"], np.uint8).reshape(r["n"], 128))
-            for r in conn.execute("SELECT frame, n, kp, desc FROM feature WHERE sha256 = ? AND extractor = ?", (sha, EXTRACTOR))]
+            for r in conn.execute("SELECT frame, n, kp, desc FROM feature WHERE sha256 = ? AND extractor = ?", (sha, EXTRACTOR))
+            if _row_ok(r)]
 
 
-def match(conn, sets: list, size: tuple[int, int], sift: dict, exclude: str | None = None) -> list[dict]:
+def match(conn, sets: list, size: tuple[int, int], sift: dict, exclude: str | None = None,
+          only: set[str] | None = None) -> tuple[list[dict], bool]:
+    """(matches, complete). Stops at SIFT_SECONDS and returns what it has, so a big or costly box
+    slows a write down by at most that much; `only` restricts candidates (used by reindex)."""
     if not sets:
-        return []
-    votes = vote(conn, sets, exclude)
+        return [], True
+    deadline = time.monotonic() + SIFT_SECONDS
+    complete = True
+    try:
+        votes = vote(conn, sets, exclude, deadline)
+    except Timeout as partial:
+        votes, complete = partial.args[0], False
+    if only is not None:
+        votes = {k: v for k, v in votes.items() if k in only}
     floor = max(6, sift["min_inliers"] // 2)
     shortlist = [sha for sha, n in sorted(votes.items(), key=lambda kv: -kv[1]) if n >= floor][:SHORTLIST]
     out = []
     for sha in shortlist:
+        if time.monotonic() > deadline:
+            complete = False
+            break
         row = conn.execute("SELECT width, height FROM item WHERE sha256 = ?", (sha,)).fetchone()
         if row is None:
             continue
@@ -223,19 +281,21 @@ def match(conn, sets: list, size: tuple[int, int], sift: dict, exclude: str | No
         kind, t = classify(H, size, (row["width"], row["height"]))
         out.append({"ref": sha, "kind": kind, "method": "sift", "inliers": inliers, "votes": votes[sha],
                     "transform": t, "summary": summary(kind, t)})
-    return out
+    return out, complete
 
 
 def stage(box, policy: dict, result, sidecar: dict) -> None:
     sets = compute(result, policy)
     save(npz_path(box, result.sha256), sets)
     sidecar["features"] = {"extractor": EXTRACTOR, "frames": [idx for idx, _, _ in sets], "keypoints": [int(kp.shape[0]) for _, kp, _ in sets]}
-    sidecar["sift_matches"] = match(box.conn, sets, (result.info.width, result.info.height), policy["duplicates"]["sift"])
+    sidecar["sift_matches"], complete = match(box.conn, sets, (result.info.width, result.info.height), policy["duplicates"]["sift"])
+    if not complete:
+        sidecar["sift_note"] = f"local-feature matching stopped after {SIFT_SECONDS:g} s; crops and rotations may be missed"
 
 
 def store(box, sha: str, sidecar: dict) -> None:
     path = npz_path(box, sha)
-    if not path.is_file():
+    if not path.is_file() and not path.is_symlink():
         return
     rows = [(sha, idx, EXTRACTOR, int(kp.shape[0]), kp.astype(np.float32).tobytes(), desc.astype(np.uint8).tobytes())
             for idx, kp, desc in load(path)]

@@ -41,7 +41,10 @@ def _keys(rule: str, obj, allowed, where: str = "") -> dict:
     return obj
 
 
-def _int(rule, value, name, lo=0, hi=None, nullable=False):
+MAX_INT = 2 ** 53
+
+
+def _int(rule, value, name, lo=0, hi=MAX_INT, nullable=False):
     if value is None and nullable:
         return None
     if isinstance(value, bool) or not isinstance(value, int) or value < lo or (hi is not None and value > hi):
@@ -159,15 +162,15 @@ def _duplicates(p: dict) -> dict:
 
 def _limits(p: dict) -> dict:
     return {
-        "max_bytes": _int("limits", p.get("max_bytes"), "max_bytes", 1, nullable=True),
-        "max_items": _int("limits", p.get("max_items"), "max_items", 1, nullable=True),
+        "max_bytes": _int("limits", p.get("max_bytes"), "max_bytes", 1, 2 ** 50, nullable=True),
+        "max_items": _int("limits", p.get("max_items"), "max_items", 1, 10 ** 9, nullable=True),
     }
 
 
 def _retention(p: dict) -> dict:
     return {
-        "expire_after_minutes": _int("retention", p.get("expire_after_minutes"), "expire_after_minutes", 1, nullable=True),
-        "staged_grace_minutes": _int("retention", p.get("staged_grace_minutes", 60), "staged_grace_minutes", 0),
+        "expire_after_minutes": _int("retention", p.get("expire_after_minutes"), "expire_after_minutes", 1, 100 * 525_600, nullable=True),
+        "staged_grace_minutes": _int("retention", p.get("staged_grace_minutes", 60), "staged_grace_minutes", 0, 525_600),
     }
 
 
@@ -211,7 +214,13 @@ def validate_rule(name: str, params) -> dict:
     return VALIDATORS[name](params)
 
 
+SIFT_BUDGET = 4800
+
+
 def cross_check(policy: dict) -> None:
+    sift = policy["duplicates"]["sift"]
+    if sift and sift["keypoints"] * policy["analysis"]["sift_keyframes"] > SIFT_BUDGET:
+        _fail("duplicates", f"sift.keypoints x analysis.sift_keyframes is limited to {SIFT_BUDGET} (matching cost grows with both)")
     default = policy["vocabulary"]["default_category"]
     if default is not None and default not in policy["categories"]:
         _fail("vocabulary", f"default_category {default!r} is not a category; categories: {', '.join(policy['categories']) or 'none'}")

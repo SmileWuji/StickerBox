@@ -44,6 +44,7 @@ Change any rule afterwards with `sticker-box policy set <rule> '<json>'` (see
 | `STICKER_BOX_MAX_FILE_MB` | 100 | largest file the tool will read |
 | `STICKER_BOX_MAX_TEMPORARY_MB` | 1024 | cap on a box's `temporary/` |
 | `STICKER_BOX_DECODE_SECONDS` | 120 | deadline for decoding one file |
+| `STICKER_BOX_SIFT_SECONDS` | 60 | deadline for local-feature matching on one write (gallery) |
 
 ## Skills
 

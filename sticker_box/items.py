@@ -5,7 +5,7 @@ import json
 import os
 import sqlite3
 
-from . import clock, db, dupes, refs, rules, stage, vocab
+from . import analysis, clock, db, dupes, media, paths, refs, rules, stage, vocab
 from .errors import BoxError
 from .phash import to_hex
 
@@ -60,7 +60,7 @@ def item_dict(box, sha: str) -> dict:
     keyframes = box.conn.execute("SELECT COUNT(*) AS n FROM keyframe WHERE sha256 = ?", (sha,)).fetchone()["n"]
     return {
         "ref": sha,
-        "file": str(box.root / row["file"]),
+        "file": paths.safe_stored_str(box, row),
         "format": row["format"], "width": row["width"], "height": row["height"],
         "animated": bool(row["animated"]), "frames": row["frames"], "duration_ms": row["duration_ms"], "fps": row["fps"],
         "codec": row["codec"], "audio": bool(row["audio"]), "bytes": row["bytes"],
@@ -91,6 +91,10 @@ def commit(box, ref: str, tags: list[str], defines: list[tuple[str, str]], value
     if kind == "item":
         raise BoxError("already_stored", f"{sha} is already stored; use `edit` to change it", ref=sha)
     sidecar = stage.ensure_fresh(box, policy, sha)
+    src = stage.staged_file(box, sidecar)
+    if src.is_symlink() or analysis.sha256_file(src) != sha:
+        raise BoxError("changed", f"the staged file for {sha[:12]} no longer matches its sha256; stage the file again", ref=sha)
+    sidecar["media"] = media.probe(src).to_dict()
     origin = sidecar.get("origin") or {}
     defaults = {"license": sidecar.get("license"), "source": sidecar.get("source")}
     defaults.update({k: origin.get(k) for k in ("text", "description", "note") if origin.get(k) is not None})
@@ -116,9 +120,11 @@ def commit(box, ref: str, tags: list[str], defines: list[tuple[str, str]], value
     removed, doomed_files = [], []
 
     now = clock.now()
-    ext = sidecar["file"].rsplit(".", 1)[1]
+    ext = src.name.rsplit(".", 1)[1]
     rel = f"persistent/{now:%Y%m}/{now:%Y%m%d}-{sha}.{ext}"
-    src, dest = stage.staged_file(box, sidecar), box.root / rel
+    dest = box.root / rel
+    if (box.persistent / f"{now:%Y%m}").is_symlink():
+        raise BoxError("unsafe_box", f"persistent/{now:%Y%m} is a symbolic link; the tool will not write through it")
     dest.parent.mkdir(parents=True, exist_ok=True)
     m = sidecar["media"]
     minutes = policy["retention"]["expire_after_minutes"]
@@ -131,11 +137,12 @@ def commit(box, ref: str, tags: list[str], defines: list[tuple[str, str]], value
             if conn.execute("SELECT 1 FROM item WHERE sha256 = ?", (sha,)).fetchone():
                 raise BoxError("already_stored", f"{sha} was stored by another session", ref=sha)
             for old in to_remove:
-                gone = conn.execute("SELECT file, added_at, expires_at FROM item WHERE sha256 = ?", (old,)).fetchone()
+                gone = conn.execute("SELECT sha256, file, added_at, expires_at FROM item WHERE sha256 = ?", (old,)).fetchone()
                 if gone is None:
                     continue
                 conn.execute("DELETE FROM item WHERE sha256 = ?", (old,))
-                doomed_files.append(box.root / gone["file"])
+                if paths.stored_rel(gone):
+                    doomed_files.append(gone)
                 removed.append({"ref": old, "reason": "expired" if old in expired_now else "oldest",
                                 "added_at": gone["added_at"], "expires_at": gone["expires_at"]})
             created = vocab.create_tags(conn, plan.create, f"commit {sha[:12]}")
@@ -176,8 +183,11 @@ def commit(box, ref: str, tags: list[str], defines: list[tuple[str, str]], value
         if moved:
             os.replace(dest, src)
         raise
-    for path in doomed_files:
-        path.unlink(missing_ok=True)
+    for gone in doomed_files:
+        try:
+            paths.stored_path(box, gone).unlink(missing_ok=True)
+        except BoxError:
+            pass
     for extra in box.temporary.glob(f"{sha}.*"):
         extra.unlink(missing_ok=True)
     box.write_readme()
@@ -255,9 +265,8 @@ def remove(box, ref: str) -> dict:
     if kind == "staged":
         stage.remove(box, sha)
         return {"status": "removed", "ref": sha, "was": "staged"}
-    row = box.conn.execute("SELECT file FROM item WHERE sha256 = ?", (sha,)).fetchone()
-    with db.transaction(box.conn):
-        box.conn.execute("DELETE FROM item WHERE sha256 = ?", (sha,))
-    (box.root / row["file"]).unlink(missing_ok=True)
+    from . import limits
+
+    (entry,) = limits.remove_items(box, [sha], "removed")
     box.write_readme()
-    return {"status": "removed", "ref": sha, "was": "stored"}
+    return {"status": "removed", "ref": sha, "was": "stored", **({"warning": entry["file_left"]} if "file_left" in entry else {})}

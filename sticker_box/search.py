@@ -3,7 +3,7 @@ fields. Each term scores an item by its best match; an item's score is the sum o
 items matching more terms rank first, then newer ones. `LIKE` handles short Chinese terms that a
 trigram index could not."""
 
-from . import clock, vocab
+from . import clock, paths, vocab
 from .errors import BoxError
 
 TAG_EXACT, TAG_ALIAS, TAG_PART, TAG_CHILD, TAG_DEFINITION = 10, 8, 5, 4, 3
@@ -145,7 +145,7 @@ def search(box, query: str, tags: list[str] = (), category: str | None = None, a
         ).fetchall()
         results.append({
             "ref": sha,
-            "file": str(box.root / row["file"]),
+            "file": paths.safe_stored_str(box, row),
             "score": scores[sha],
             "matched": matched.get(sha, []),
             "format": row["format"],
