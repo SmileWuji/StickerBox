@@ -104,10 +104,24 @@ def vocabulary(category: str) -> str:
     return "\n".join(f"- {v}: {d or ''}" for v, d in rows)
 
 
+def ocr_hint(item: dict) -> str:
+    """The RapidOCR hint `stage` would report for this sticker, cached; production agents see it."""
+    path = BENCH / "ocr_hints.json"
+    hints = json.loads(path.read_text()) if path.is_file() else {}
+    if item["id"] not in hints:
+        result = analysis.analyze(Path(item["path"]), policy.DEFAULTS["analysis"], with_ocr=True)
+        hints[item["id"]] = result.ocr["text"]
+        path.write_text(json.dumps(hints, ensure_ascii=False, indent=0))
+    return hints[item["id"]]
+
+
 def build_messages(skill: str, variant: str, item: dict) -> list[dict]:
     template = (VARIANTS / skill / f"{variant}.md").read_text(encoding="utf-8")
     system = template.replace("{VOCABULARY}", vocabulary(FIELD[skill]) if FIELD[skill] else "")
     user = "Answer with the JSON only."
+    if skill == "tag-text":
+        hint = ocr_hint(item)
+        user = f"ocr_hint from stage: {hint if hint else '(nothing found)'}\n" + user
     if skill != "tag-text" and item.get("context_text"):
         user = f"Text on the sticker: {item['context_text']}\n" + user
     return [{"role": "system", "content": system}, {"role": "user", "content": user, "images": [image_b64(item)]}]
@@ -124,6 +138,8 @@ def call(messages: list[dict]) -> tuple[str, float, str]:
 
 
 def parse(content: str) -> tuple[dict | None, bool]:
+    """(answer, malformed). A truncated answer (a runaway repetition hitting the token cap) is
+    salvaged field by field, as the protocol advises, and still flagged malformed."""
     text = re.sub(r"^```(?:json)?|```$", "", content.strip(), flags=re.M).strip()
     try:
         return json.loads(text), False
@@ -134,7 +150,15 @@ def parse(content: str) -> tuple[dict | None, bool]:
                 return json.loads(m.group(0)), True
             except ValueError:
                 pass
-    return None, True
+    salvaged = {}
+    if (m := re.search(r'"has_text"\s*:\s*(true|false)', text)):
+        salvaged["has_text"] = m.group(1) == "true"
+    if (m := re.search(r'"text"\s*:\s*"((?:[^"\\]|\\.)*)', text)):
+        salvaged["text"] = m.group(1)
+    for key in ("emotion", "visual"):
+        if (m := re.search(rf'"{key}"\s*:\s*\[([^\]]*)', text)):
+            salvaged[key] = re.findall(r'"([^"]+)"', m.group(1))
+    return (salvaged or None), True
 
 
 def cache_path() -> Path:
@@ -205,7 +229,7 @@ def score(skill: str, variant: str, split: str, repeat: str = "a") -> dict:
     have = cached()
     rows = [(i, have.get((MODEL, skill, variant, i["id"], repeat))) for i in inputs(skill, split)]
     rows = [(i, r) for i, r in rows if r is not None]
-    malformed = sum(1 for _, r in rows if r["answer"] is None)
+    malformed = sum(1 for _, r in rows if r["malformed"])
     out = {"variant": variant, "split": split, "n": len(rows), "malformed": malformed,
            "latency_p50": round(sorted(r["latency"] for _, r in rows)[len(rows) // 2], 2) if rows else None}
     if skill == "tag-text":
