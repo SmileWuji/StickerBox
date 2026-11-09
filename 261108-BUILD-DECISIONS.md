@@ -148,3 +148,32 @@ under "For the owner", continue. Each entry says what to change if the owner dis
     stands as a known property, not an open question: the repository README ("How duplicates are
     found"), every box's generated README and `docs/integration.md` state that SIFT is used, what
     it misses and how often it links unrelated images.
+
+## Backlog (2026-11-09)
+
+38. **Commands that decode no image import no image library.** NumPy, OpenCV and Pillow load only
+    where an image is analysed, so `show`, `edit`, `remove` and plain `check` save about 160 ms per
+    call (`show` 266 to 108 ms; `261109-OPS-BASELINE.md`). Undo: move the imports back to module
+    level.
+
+39. **Benchmark labels come from Sonnet, checked on a 10% sample** (owner, 2026-11-09). Sonnet
+    tagged the 264-sticker sample by following the skills, which is also its benchmark; the main
+    agent corrected a seeded 10% as the only independent gold. Human labels from earlier
+    projects are used where they exist (has-text, transcriptions, characters).
+
+40. **One skill text for every model, changed only where a test held** (owner's rule, results in
+    `261109-SKILL-BENCHMARKS.md`). `tag-text` ships v11: no Qwen gain on test but no loss, and it
+    covers the cases agents asked about; its first form (v10) reversed Sonnet's reading order and
+    was scoped before shipping. `tag-emotion` ships v7 (+0.025 F1 on test for Qwen, not worse for
+    Sonnet). `tag-visual` is unchanged because its dev gain vanished on test. Undo: the variants
+    are in `scripts/bench_skills/variants/`, v0 is the earlier text.
+
+41. **Text is scored without punctuation width or ellipsis form.** The skill asks for full-width
+    marks in Chinese and the human transcriptions use ASCII ones; scoring them as errors measured
+    the convention, not the reading.
+
+42. **Tool skills are smoke-tested on built fixtures with answer keys kept out of the agents'
+    reach** (`scripts/bench_skills/smoke_fixtures.py`). Each case has a known right outcome
+    (copies, crops, a planted request, an injected note, an expired item), so success is checked,
+    not judged. The fixes they prompted are listed in the benchmark report, section 8.
+

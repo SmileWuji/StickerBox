@@ -1,6 +1,6 @@
 """Scores Sonnet's tag-text answers on the human-labelled test stickers, per wording, with the
 same metrics as qwen.py. Answers are in testdata/private/bench/sonnet-tt/out-<wording>-<n>.jsonl;
-wording a is the shipped skill, b the Qwen-tuned v10, c the shipped v11.
+wording a is the original skill, b the Qwen-tuned v10, c the shipped v11.
 
     python3 scripts/bench_skills/sonnet_tt.py
 """

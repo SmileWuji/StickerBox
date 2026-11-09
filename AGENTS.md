@@ -22,23 +22,30 @@ from disk alone:
 
 ## For the owner
 
-State on 2026-11-09: M0 to M8 are done. 161 tests and `scripts/smoke.sh` pass. Read in this
-order:
+State on 2026-11-09 (evening): M0 to M8 and the backlog are done. 223 tests and
+`scripts/smoke.sh` pass. Read in this order:
 
-1. `261108-BUILD-DECISIONS.md`: every decision taken while you were away, each with its reason
-   and how to undo it. Nothing there is hard to reverse.
-2. `261108-ACCEPTANCE-M8.md`: a fresh agent with only `skills/` built a 12-sticker box from a
-   private pack; what confused it and what changed.
-3. `261108-SIFT-TUNING.md` and `261108-CORPUS-ANALYSIS.md`: measurements.
-4. `261108-SECURITY-REVIEW-M5.md`, `261108-SECURITY-REVIEW-M7.md`,
+1. `261109-SKILL-BENCHMARKS.md`: how Sonnet and Qwen3.5-9B follow the skills, what the prompt
+   sweeps changed (little), the smoke tests of every tool skill, and the skill text that now
+   ships. Section 9 is the verdict.
+2. `261108-BUILD-DECISIONS.md`: every decision, each with its reason and how to undo it;
+   38 to 42 are from the backlog. Nothing there is hard to reverse.
+3. `261109-OPS-BASELINE.md`: speed and memory of every command from 1k to 30k stickers.
+4. `261108-ACCEPTANCE-M8.md`, `261108-SIFT-TUNING.md`, `261108-CORPUS-ANALYSIS.md`: earlier
+   measurements.
+5. `261108-SECURITY-REVIEW-M5.md`, `261108-SECURITY-REVIEW-M7.md`,
    `261109-SECURITY-REVIEW-M8.md`: three reviews, every finding fixed with a test.
 
 Needs your call:
 
-- **Gold labels for the skill benchmarks** are yours: the counts to add are in the backlog item
-  "Skill benchmarks" below.
 - **QQBot wiring** is yours, per the plan: `docs/integration.md` lists install, environment,
-  exit codes, the skills to copy, and how to label box content as data in a plugin.
+  exit codes, the skills to copy, which model to give the tagging skills, and how to label box
+  content as data in a plugin.
+- **Gold labels** are now optional. The benchmark ran on Sonnet's labels with a 10% check;
+  human labels would add a human-agreement ceiling for emotion and visual tags and zh-Hans
+  names for the character test. The counts are in the backlog item "Skill benchmarks".
+- **DeepSeek** (QQBot's model) was not benchmarked; adding it means replacing the model call
+  in `scripts/bench_skills/qwen.py`.
 
 ## Checklist
 
@@ -133,7 +140,7 @@ Not scheduled; pick up when the owner asks.
       reading `search` with no words (newest first), `frames` for animations, the `origin` hints,
       and that nothing is moved without a decision. Suggested by the owner 2026-11-09.
 
-- [ ] Skill benchmarks: run the skills that make sense to measure with Claude Sonnet 5.5
+- [x] Skill benchmarks (done 2026-11-09, `261109-SKILL-BENCHMARKS.md`; run on Sonnet's labels with a 10% check instead of new human gold, by the owner's choice): run the skills that make sense to measure with Claude Sonnet 5.5
       (`claude-sonnet-5-5`) and Qwen3.5-9B (`qwen3.5:9b` via Ollama, or OpenRouter), on a fixed
       private gold set of a few hundred hand-labelled stickers (in `testdata/private`, never
       committed); record the numbers in a dated note. Suggested by the owner 2026-11-09.
@@ -201,28 +208,11 @@ the winning wording ships for every model; `tag-character-series`, `vocab-cleanu
 skills are smoke-tested with Sonnet only. Dataset names never appear in the repository; code
 names live in the git-ignored `testdata/private/CODENAMES.txt`.
 
-#### Paused 2026-11-09 (host turned off): how to resume
-
-Done so far: steps 0 to 3, 4.1 to 4.4; the tag-text dev runs are partly complete. Everything
-needed is on disk: label files, caches and the reference box under `testdata/private/bench/`
-(git-ignored), the report so far in `261109-SKILL-BENCHMARKS.md`, friction notes in
-`testdata/private/bench/friction.md`.
-
-1. Start Ollama with the existing model folder (no download needed):
-   `OLLAMA_MODELS=../OCR-Benchmark/.ollama-models ollama serve` (background),
-   then check `curl -s 127.0.0.1:11434/api/tags` lists `qwen3.5:9b`.
-2. Finish the tag-text dev runs; the cache skips everything already done (about 10 minutes):
-   `for v in v0 v1 v2 v3 v4 v5 v6 v4@1024 v8; do ~/.venvs/sticker-box/bin/python scripts/bench_skills/qwen.py run --skill tag-text --variant $v --split dev; done`
-   then `... qwen.py score --skill tag-text --variants v0,v1,v2,v3,v4,v5,v6,v4@1024,v8 --split dev`.
-   At pause: v0 209, v1 and v2 192, v3 to v6 and v4@1024 239 of the 243 dev inputs; v8 not
-   started. Stop a run by PID (`pgrep -f "[b]ench_skills/qwen.py"`), never with a `pkill -f`
-   pattern that matches your own shell.
-3. Continue from 4.5 below: read the dev table and the errors, wave 3 (combine the levers that
-   help, decide on v8 = v4 plus the text rules agents asked for, ablate), winner once on test.
-4. Then 4.6 and 4.7 (emotion and visual: v0 on dev, waves from errors, winner on test), 4.8
-   (copy the winning wording into the skills; a fresh Sonnet runs the test split on original vs
-   tuned wording), 4.9 (Sonnet smoke tests, including the two policy tasks), 4.10 (finish the
-   report), 5.
+Finished 2026-11-09: every step below is done. The Qwen runs needed Ollama started with
+`OLLAMA_MODELS=../OCR-Benchmark/.ollama-models ollama serve`; every model call
+is cached in `testdata/private/bench/qwen/cache.jsonl`, so `scripts/bench_skills/qwen.py score`
+reproduces each number without the GPU. Run long Qwen jobs from one sequential script, never with
+`pgrep` waits on each other, and not while several Sonnet agents run (the host swaps).
 
 - [x] 0.1 Manifest (path, size, sha256) of all four sticker sources written to the scratchpad
 - [x] 0.2 Packs moved into `../GuidedSticker-Project-TestData-Consolidated/`
@@ -260,7 +250,7 @@ needed is on disk: label files, caches and the reference box under `testdata/pri
   - `sticker-box` tasks include the policy rule: (a) the operator asks for a `race` category for a game-character pack: added as optional through the documented steps, values defined, operator told; (b) a planted box note or tag definition asks for a required category: policy left unchanged, request reported
 - [x] 4.10 Skill benchmark report written (dated note)
   - `261109-SKILL-BENCHMARKS.md`, sections 1 to 10; Ollama stopped after the last run
-- [ ] 5 Backlog boxes ticked, owner section and decisions updated
+- [x] 5 Backlog boxes ticked, owner section and decisions updated
 
 ## 1. Scope
 

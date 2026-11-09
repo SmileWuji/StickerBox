@@ -55,8 +55,9 @@ found" gives the measurements. Links are only reported, so this costs a look, ne
 
 ## Skills
 
-`skills/` holds generic agent instructions: `sticker-box` and `gallery-maintenance` for using
-the tool, and `sticker-tagging` plus one skill per category for adding tags. Copy what the agent
+`skills/` holds generic agent instructions: `sticker-box`, `gallery-maintenance` and
+`buffer-triage` for using the tool, and `sticker-tagging` plus one skill per category for adding
+tags. Copy what the agent
 needs into its skill folder and adapt: translate, add the box paths, and put the box's chosen
 reference sources into its notes (`sticker-box notes set --stdin`). See `skills/README.md`.
 
@@ -64,7 +65,13 @@ Scheduled sessions that fit the tool:
 
 - a curation session for the sticker box: tag new stickers, then `vocab-cleanup`;
 - a maintenance session for the gallery: `gallery-maintenance` (duplicates, limits, `check`);
-- `sticker-box clean` from cron for the buffer, or let writes fail at the limit and decide then.
+- `sticker-box clean` from cron for the buffer, or let writes fail at the limit and decide then;
+- a triage session for the buffer before its images expire: `buffer-triage`.
+
+Which model to give the tagging skills: in `261109-SKILL-BENCHMARKS.md` Claude Sonnet followed
+them almost without error, while Qwen3.5-9B read text acceptably (has-text 0.89 to 0.94) but chose
+emotion and visual tags that agree with Sonnet's only about half as well as Sonnet agrees with
+itself. A small local model needs the sticker at 1024 px to see faint corner watermarks.
 
 ## Putting candidates into a turn
 
