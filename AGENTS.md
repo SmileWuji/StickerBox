@@ -213,7 +213,8 @@ names live in the git-ignored `testdata/private/CODENAMES.txt`.
   - 3.2 running in the background: results to `testdata/private/bench/ops-*.json` (synthetic data)
 - [ ] 3.2 Baseline run on `/tmp` and the NTFS mount; `261109-OPS-BASELINE.md` written
 - [ ] 3.3 Small fixes for missed targets re-measured and recorded (or deferred with reasons)
-- [ ] 4.1 Benchmark sample drawn (~250, dev 150 / test 100) and existing human gold mapped
+- [x] 4.1 Benchmark sample drawn (~250, dev 150 / test 100) and existing human gold mapped
+  - 264 stickers from 33 packs (dev 165, test 99) in `testdata/private/bench/sample.json`; human labels resolved: 127 has-text, 20 transcriptions, 150 character/series
 - [ ] 4.2 Sonnet labelling run (sequential batches) and vocabulary cleanup; Sonnet noise-floor re-run
 - [ ] 4.3 10% checked and corrected by the main agent; Sonnet accuracy per field computed
 - [ ] 4.4 Ollama up with `qwen3.5:9b`; Qwen harness built; Qwen noise floor measured
