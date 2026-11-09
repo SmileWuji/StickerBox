@@ -216,6 +216,7 @@ names live in the git-ignored `testdata/private/CODENAMES.txt`.
 - [x] 4.1 Benchmark sample drawn (~250, dev 150 / test 100) and existing human gold mapped
   - 264 stickers from 33 packs (dev 165, test 99) in `testdata/private/bench/sample.json`; human labels resolved: 127 has-text, 20 transcriptions, 150 character/series
 - [ ] 4.2 Sonnet labelling run (sequential batches) and vocabulary cleanup; Sonnet noise-floor re-run
+  - ready: 11 batches of 24 in `testdata/private/bench/batches/`, box `testdata/private/bench/sonnet-box` (file rules off), brief `testdata/private/bench/sonnet-prompt.md`; output `bench/sonnet/labels.jsonl`; snapshot the box before batch 05 for the noise-floor re-run. Next: launch batch 01 once 3.2 has finished
 - [ ] 4.3 10% checked and corrected by the main agent; Sonnet accuracy per field computed
 - [ ] 4.4 Ollama up with `qwen3.5:9b`; Qwen harness built; Qwen noise floor measured
 - [ ] 4.5 Qwen sweep `tag-text` (dev), winner on test
