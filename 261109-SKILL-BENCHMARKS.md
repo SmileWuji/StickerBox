@@ -79,39 +79,54 @@ ceiling for any agreement score against Sonnet's labels.
 ## 5. Qwen: `tag-text`
 
 Baseline v0 is the shipped skill. Metrics on dev: has-text accuracy and watermark recall on the
-human labels; character error rate (CER) and exact match on transcriptions.
+78 human labels (10 watermark-only); character error rate (CER) and exact match on 76
+transcriptions (11 human, the rest Sonnet's reference). Transcriptions are compared without
+spaces, letter case, punctuation width or ellipsis form: the skill asks for full-width marks in
+Chinese, the human transcriptions use ASCII ones.
 
-**Wave 1** (one lever each, from v0's errors; human dev labels, n=78, 11 transcriptions):
+**Wave 1** (one lever each, from v0's errors):
 
-| variant | lever | has-text | watermark recall |
-|---|---|---|---|
-| v0 | shipped skill | 0.885 | 0.5 |
-| v1 | no concrete sample phrase in the answer section | 0.885 | 0.5 |
-| v2 | no worked examples | 0.885 | 0.5 |
-| v3 | the noise to ignore named (lone letters, background digits, decorative words) | 0.885 | 0.5 |
-| v4 | a lone watermark still counts as text | 0.897 | 0.6 |
-| v5 | explicit "never guess" escape hatch | 0.885 | 0.5 |
-| v6 | OCR hint framed harder as unreliable | 0.885 | 0.5 |
+| variant | lever | has-text | watermark recall | CER | exact |
+|---|---|---|---|---|---|
+| v0 | shipped skill | 0.885 | 0.5 | 0.147 | 0.737 |
+| v1 | no concrete sample phrase in the answer section | 0.885 | 0.5 | | |
+| v2 | no worked examples | 0.885 | 0.5 | | |
+| v3 | the noise to ignore named (lone letters, background digits, decorative words) | 0.885 | 0.5 | | |
+| v4 | a lone watermark still counts as text | 0.897 | 0.6 | 0.147 | 0.737 |
+| v5 | explicit "never guess" escape hatch | 0.885 | 0.5 | | |
+| v6 | OCR hint framed harder as unreliable | 0.885 | 0.5 | | |
 
-Flat within the noise floor. The dominant error: 5 of 6 watermark-only stickers answered "no
-text" by every variant. Baseline errors also included echoing the skill's sample phrase on a
-text-free sticker (once) and reading background digits or a lone letter as text.
+Flat within the noise floor; transcription did not move either (CER 0.14 to 0.16 for all). The
+dominant error: 5 of 6 watermark-only stickers answered "no text" by every variant. Baseline
+errors also included echoing the skill's sample phrase on a text-free sticker (once) and reading
+background digits or a lone letter as text.
 
-**Wave 2a** (image size and one more wording):
+**Wave 2** (image size, and the text rules Sonnet's agents asked for in section 4):
 
-| variant | has-text | watermark recall | median latency |
-|---|---|---|---|
-| v4 at 512 px | 0.897 | 0.6 | 1.1 s |
-| v4 at 768 px | 0.910 | 0.7 | 1.3 s |
-| v4 at 1024 px | 0.923 | 0.8 | 2.2 s |
-| v7 = v4 + "check the edges and corners" | 0.897 | 0.6 | 1.0 s |
+| variant | has-text | watermark recall | CER | exact | median latency |
+|---|---|---|---|---|---|
+| v4 at 512 px | 0.897 | 0.6 | 0.147 | 0.737 | 1.1 s |
+| v4 at 1024 px | 0.923 | 0.8 | 0.145 | 0.724 | 2.1 s |
+| v7 = v4 + "check the edges and corners" (n=82) | 0.897 | 0.6 | | | 1.0 s |
+| v8 = v4 + rules for vertical text, readable sound effects, logos and print, partly legible watermarks | 0.910 | 0.5 | 0.136 | 0.737 | 1.1 s |
 
 Small faint watermarks are an operating-point problem, not a wording one: showing Qwen the
 sticker at 1024 px recovers them at twice the latency. That belongs to whoever deploys a small
 model, not to the skill text.
 
-*Pending*: the variants on the full dev set with Sonnet's transcriptions; wave 3 (combine,
-ablate); the winner on test.
+**Wave 3** (ablation of v8):
+
+| variant | has-text | watermark recall | CER | exact |
+|---|---|---|---|---|
+| v9 = v8 without the lone-watermark line | 0.897 | 0.5 | 0.133 | 0.737 |
+| v10 = v8 without the partly-legible-watermark line | 0.910 | 0.6 | 0.134 | 0.737 |
+| v11 = v10 with the vertical-text line scoped to one block (see section 7) | *pending* | | | |
+
+Every difference here is one or two stickers, the size of the noise. v10 is best or tied on
+every metric, and its added rules answer the agents' friction without costing Qwen anything, so
+it is the candidate. The partly-legible-watermark line was dropped: it cost one watermark.
+
+*Pending*: v11 on dev; v0 and the shipped wording once on test.
 
 ## 6. Qwen: `tag-emotion` and `tag-visual`
 
@@ -119,7 +134,27 @@ ablate); the winner on test.
 
 ## 7. Sonnet on the tuned wording
 
-*Pending.*
+`tag-text`: fresh Sonnet agents read the 67 human-labelled test stickers (4 watermark-only, 9
+transcribed) with the shipped wording (a) and the Qwen-tuned v10 (b), two agents per wording, given
+the same pictures and OCR hints as Qwen.
+
+| wording | has-text | watermark recall | CER (n=9) | exact (n=9) |
+|---|---|---|---|---|
+| a, shipped | 0.955 | 4/4 | 0.210 | 4/9 |
+| b, v10 | 0.955 | 4/4 | 0.293 | 3/9 |
+| c, v11 (fix check, one agent, the 9 transcribed only) | | | 0.223 | 4/9 |
+
+Has-text is identical: two errors are shared (a sound-effect caption missed, small marks read
+as text) and each wording has one the other got right. The transcription loss under v10 is
+one rule: "Vertical text, Chinese or Japanese: columns from right to left" made Sonnet order the
+whole image right to left on 2 of the 9, which is wrong both times (checked by eye). v11 scopes
+the rule to one block of vertical text; the fix check restored the order on both. Sonnet's CER
+here is high for a reason that is not an error: the human transcriptions leave out small
+background print that the skill asks to include.
+
+So the tuned wording as first written was worse for Sonnet, as the protocol warned it might be;
+the scoped v11 is not, and it is what ships.
+
 
 ## 8. Smoke tests (Sonnet, no tuning)
 
