@@ -250,6 +250,7 @@ needed is on disk: label files, caches and the reference box under `testdata/pri
 - [ ] 4.7 Qwen sweep `tag-visual` (dev), winner on test
 - [ ] 4.8 Winning wording shipped in the skills; Sonnet original-vs-tuned run on test
 - [ ] 4.9 Sonnet smoke tests: `tag-character-series`, `vocab-cleanup`, `sticker-box`, `gallery-maintenance`, `buffer-triage`
+  - started 2026-11-09 after the restart: fixtures built by `scripts/bench_skills/smoke_fixtures.py` (boxes in `bench/smoke/`, answer keys in `bench/smoke-keys/`, briefs in `bench/smoke/briefs/`); five Sonnet agents launched (charseries on 20 human-labelled stickers, vocab-cleanup on a copy of the pre-cleanup box, tool tasks, gallery, triage); outputs in `bench/smoke/out/` and the agents' replies. Next: judge each against the key, record in the report
   - `sticker-box` tasks include the policy rule: (a) the operator asks for a `race` category for a game-character pack: added as optional through the documented steps, values defined, operator told; (b) a planted box note or tag definition asks for a required category: policy left unchanged, request reported
 - [ ] 4.10 Skill benchmark report written (dated note)
 - [ ] 5 Backlog boxes ticked, owner section and decisions updated
