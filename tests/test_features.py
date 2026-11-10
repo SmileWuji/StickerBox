@@ -74,8 +74,23 @@ def test_commit_records_relations_and_dupes_clusters_them(gallery, run_cli, scen
     assert {m["ref"] for m in cluster["members"]} == {orig, refs[0], refs[1]}
     assert cluster["keeper"] in {orig, refs[0], refs[1]}
     assert all(link["how"] for link in cluster["links"])
-    assert len(cluster["suggested"]) == 2 and all("sticker-box remove" in s["command"] for s in cluster["suggested"])
+    assert cluster["suggested"] == []
     assert run_cli("dupes", "--kind", "near_duplicate", "--box", str(root))["clusters"] == []
+
+
+def test_dupes_suggests_removing_only_copies_and_never_the_picture_a_screenshot_contains(gallery, run_cli, scene, tmp_path):
+    root, orig = gallery
+    copy = tmp_path / "copy.jpg"
+    cv2.imwrite(str(copy), cv2.imread(str(scene["orig"])), [cv2.IMWRITE_JPEG_QUALITY, 60])
+    refs = {}
+    for name, path in (("shot", scene["shot"]), ("copy", copy)):
+        (s,) = run_cli("stage", str(path), "--box", str(root))["results"]
+        run_cli("commit", s["ref"], "--box", str(root), "--license", "unknown")
+        refs[name] = s["ref"]
+    (cluster,) = run_cli("dupes", "--box", str(root))["clusters"]
+    assert cluster["keeper"] == refs["shot"]
+    assert [s["command"].split()[2] for s in cluster["suggested"]] == [refs["copy"][:12]]
+    assert orig[:12] in cluster["suggested"][0]["effect"]
 
 
 def test_reindex_rebuilds_the_same_relations(gallery, run_cli, scene):
@@ -110,3 +125,15 @@ def test_classify_reads_the_transform():
     H = np.array([[0.5, 0.0, 300.0], [0.0, 0.5, 200.0], [0.0, 0.0, 1.0]])
     kind, t = features.classify(H, (1200, 900), (1200, 900))
     assert kind == "crop_of" and t["zoom"] == 2.0 and t["region_in_b"] == [0.25, 0.222, 0.75, 0.722]
+
+
+def test_an_invalid_commit_fails_before_any_sift_matching(gallery, run_cli, scene, monkeypatch):
+    root, _ = gallery
+    (s,) = run_cli("stage", str(scene["crop"]), "--box", str(root))["results"]
+
+    def no_matching(*args, **kwargs):
+        raise AssertionError("matched before validation")
+
+    monkeypatch.setattr(features, "match", no_matching)
+    out = run_cli("commit", s["ref"], "--box", str(root), "--license", "unknown", "--field", "nope=1", expect=1)
+    assert out["error"] == "invalid"

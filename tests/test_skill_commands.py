@@ -56,10 +56,25 @@ def commands_in(path: Path) -> list[tuple[int, str]]:
     return [(n, c) for n, c in found if not _just_a_name(c)]
 
 
+def _choices(parser) -> dict:
+    for action in parser._actions:
+        if hasattr(action, "choices") and isinstance(action.choices, dict):
+            return action.choices
+    return {}
+
+
 def _just_a_name(command: str) -> bool:
-    """Prose that names a command (`sticker-box tag new`) rather than showing an invocation."""
+    """Prose that names a command (`sticker-box tag new`) rather than showing an invocation. Only
+    a path that exists in the CLI counts; a misnested or renamed one is parsed and fails."""
     words = command.split()[1:]
-    return not words or all(w in SUBCOMMANDS or w == "skill" for w in words)
+    if words == ["skill"]:
+        return True
+    parser = build_parser()
+    for word in words:
+        parser = _choices(parser).get(word)
+        if parser is None:
+            return False
+    return bool(words)
 
 
 def tokens_of(command: str) -> list[str]:
@@ -114,3 +129,12 @@ def test_documented_command_parses(path, line, command):
 ])
 def test_the_check_catches_stale_commands(command):
     assert parse_problem(command) is not None
+
+
+@pytest.mark.parametrize("command", ["sticker-box vocab rename", "sticker-box tag review", "sticker-box policy list", "sticker-box lock"])
+def test_a_misnested_command_name_is_not_skipped_as_prose(command):
+    assert not _just_a_name(command) and parse_problem(command) is not None
+
+
+def test_a_real_command_name_is_prose():
+    assert _just_a_name("sticker-box tag new") and _just_a_name("sticker-box vocab lock")

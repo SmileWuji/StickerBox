@@ -111,3 +111,18 @@ def test_newer_schema_is_refused(tmp_path, run_cli):
     with pytest.raises(BoxError) as exc:
         Box.open(root)
     assert exc.value.code == "box_too_new"
+
+
+def test_a_stored_on_duplicate_mode_from_before_report_only_is_ignored(tmp_path, run_cli):
+    import sqlite3
+
+    root = tmp_path / "b"
+    run_cli("init", str(root), "--preset", "telegram-sticker", "--language", "en")
+    conn = sqlite3.connect(root / "box.sqlite3")
+    params = json.loads(conn.execute("SELECT params FROM policy_rule WHERE name = 'duplicates'").fetchone()[0])
+    conn.execute("UPDATE policy_rule SET params = ? WHERE name = 'duplicates'", (json.dumps({**params, "on_duplicate": "reject"}),))
+    conn.commit()
+    conn.close()
+    assert "on_duplicate" not in run_cli("policy", "show", "--box", str(root))["policy"]["duplicates"]
+    run_cli("policy", "set", "duplicates", json.dumps(params), "--box", str(root))
+    run_cli("info", "--box", str(root))

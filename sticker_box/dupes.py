@@ -75,23 +75,32 @@ def _remove(box, ref: str) -> str:
     return f"sticker-box remove {ref[:12]} --box {shlex.quote(str(box.root))}"
 
 
+def _quality(width: int, height: int, animated) -> tuple[int, bool]:
+    """Which copy of the same picture to keep: the larger, then the animated one. Ties go to the
+    stored, older copy; file size is not quality (a re-saved copy can only lose detail)."""
+    return (width or 0) * (height or 0), bool(animated)
+
+
 def suggest(box, new_ref: str, new_media: dict, match: dict, staged: bool) -> list[dict]:
     """Ready-to-run commands for a reported match, likelier choice first. The tool never runs
-    them; whoever added the image decides."""
-    row = box.conn.execute("SELECT width, height, bytes, animated FROM item WHERE sha256 = ?", (match["ref"],)).fetchone()
+    them; whoever added the image decides. While the new image is only staged, the stored item is
+    never offered for removal: removing it first would lose it if the commit then fails."""
+    row = box.conn.execute("SELECT width, height, animated FROM item WHERE sha256 = ?", (match["ref"],)).fetchone()
     if row is None:
         return []
+    better = _quality(new_media["width"], new_media["height"], new_media["animated"]) > _quality(row["width"], row["height"], row["animated"])
     drop_new = {"command": _remove(box, new_ref),
                 "effect": "drop this new image, keep the stored one" if staged else "remove the image just added, keep the older one"}
-    drop_old = {"command": _remove(box, match["ref"]),
-                "effect": ("remove the stored image; commit this one first to keep it instead" if staged
-                           else "remove the older image, keep the one just added")}
     if match["kind"] not in SAME_PICTURE:
         drop_new["effect"] += f" (only if it shows the same thing: this is `{match['kind']}`, not an identical picture)"
         return [drop_new]
-    new_quality = (new_media["width"] * new_media["height"], bool(new_media["animated"]), new_media["bytes"])
-    old_quality = (row["width"] * row["height"], bool(row["animated"]), row["bytes"])
-    return [drop_old, drop_new] if new_quality > old_quality else [drop_new, drop_old]
+    if staged:
+        if better:
+            drop_new["effect"] += ("; the new one is larger or animated: to keep it instead, commit it and run the"
+                                   " remove that `commit` suggests for the stored one")
+        return [drop_new]
+    drop_old = {"command": _remove(box, match["ref"]), "effect": "remove the older image, keep the one just added"}
+    return [drop_old, drop_new] if better else [drop_new, drop_old]
 
 
 def _edge_summary(kind: str, method: str, score, transform: str | None) -> str:
@@ -105,41 +114,56 @@ def _edge_summary(kind: str, method: str, score, transform: str | None) -> str:
 
 
 def clusters(box, kinds: set[str] | None = None) -> list[dict]:
-    """Groups of items linked by relations, each with a suggested keeper: the largest, then the oldest."""
+    """Groups of items linked by relations. The keeper is the largest, then the oldest. Removal
+    is suggested only for copies of the same picture, keeping the best copy of each set: a crop,
+    rotation, frame or overlap is often a different image, and a group can be joined by a false
+    link."""
     conn = box.conn
     rels = [r for r in conn.execute("SELECT a, b, kind, method, score, transform FROM relation") if not kinds or r["kind"] in kinds]
-    parent: dict[str, str] = {}
 
-    def root(x: str) -> str:
-        parent.setdefault(x, x)
-        while parent[x] != x:
-            parent[x] = parent[parent[x]]
-            x = parent[x]
-        return x
+    def components(edges) -> dict[str, list[str]]:
+        parent: dict[str, str] = {}
 
-    for r in rels:
-        parent[root(r["a"])] = root(r["b"])
-    groups: dict[str, list[str]] = {}
-    for x in list(parent):
-        groups.setdefault(root(x), []).append(x)
+        def root(x: str) -> str:
+            parent.setdefault(x, x)
+            while parent[x] != x:
+                parent[x] = parent[parent[x]]
+                x = parent[x]
+            return x
+
+        for r in edges:
+            parent[root(r["a"])] = root(r["b"])
+        groups: dict[str, list[str]] = {}
+        for x in list(parent):
+            groups.setdefault(root(x), []).append(x)
+        return groups
+
+    from . import paths
+
+    def best(rows):
+        return max(rows, key=lambda r: (_quality(r["width"], r["height"], r["animated"]), [-ord(c) for c in r["added_at"]]))
+
     out = []
-    for members in groups.values():
+    for members in components(rels).values():
         if len(members) < 2:
             continue
         rows = [conn.execute("SELECT sha256, file, width, height, bytes, added_at, animated FROM item WHERE sha256 = ?", (m,)).fetchone() for m in members]
         rows = [r for r in rows if r is not None]
-        keeper = max(rows, key=lambda r: (r["width"] * r["height"], r["animated"], [-ord(c) for c in r["added_at"]]))
-        member_set = {r["sha256"] for r in rows}
-        from . import paths
-
+        if len(rows) < 2:
+            continue
+        by_ref = {r["sha256"]: r for r in rows}
+        suggested = []
+        for same in components([r for r in rels if r["kind"] in SAME_PICTURE and r["a"] in by_ref and r["b"] in by_ref]).values():
+            kept = best([by_ref[x] for x in same])["sha256"]
+            suggested += [{"command": _remove(box, x), "effect": f"same picture as {kept[:12]}: keep that one, remove this copy"}
+                          for x in sorted(same) if x != kept]
         out.append({
-            "keeper": keeper["sha256"],
+            "keeper": best(rows)["sha256"],
             "members": [{"ref": r["sha256"], "file": paths.safe_stored_str(box, r), "size": f"{r['width']}x{r['height']}",
                          "bytes": r["bytes"], "added_at": r["added_at"], "animated": bool(r["animated"])} for r in rows],
             "links": [{"a": r["a"], "b": r["b"], "kind": r["kind"], "how": _edge_summary(r["kind"], r["method"], r["score"], r["transform"])}
-                      for r in rels if r["a"] in member_set],
-            "suggested": [{"command": _remove(box, r["sha256"]), "effect": "keep the suggested keeper, remove this one"}
-                          for r in rows if r["sha256"] != keeper["sha256"]],
+                      for r in rels if r["a"] in by_ref],
+            "suggested": suggested,
         })
     out.sort(key=lambda c: -len(c["members"]))
     return out

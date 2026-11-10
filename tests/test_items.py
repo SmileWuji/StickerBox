@@ -108,13 +108,48 @@ def test_near_duplicate_is_reported_with_suggested_commands(box, run_cli, tmp_pa
     (b,) = stage(run_cli, root, recompressed(tmp_path, GENERIC / "sticker-static.webp"))
     (dup,) = b["duplicates"]
     assert dup["ref"] == a["ref"] and dup["kind"] == "near_duplicate"
-    first, second = dup["suggested"]
-    assert first["command"].startswith(f"sticker-box remove {b['ref'][:12]} --box ") and "keep the stored one" in first["effect"]
-    assert second["command"].startswith(f"sticker-box remove {a['ref'][:12]} --box ")
+    (only,) = dup["suggested"]
+    assert only["command"].startswith(f"sticker-box remove {b['ref'][:12]} --box ") and "keep the stored one" in only["effect"]
     out = run_cli("commit", b["ref"], "--box", str(root), *STICKER, "--tag", "emotion=无语")
-    assert out["relations"][0]["kind"] == "near_duplicate" and out["relations"][0]["suggested"]
-    run_cli(*shlex.split(out["relations"][0]["suggested"][0]["command"])[1:])
+    first, second = out["relations"][0]["suggested"]
+    assert out["relations"][0]["kind"] == "near_duplicate"
+    assert first["command"].startswith(f"sticker-box remove {b['ref'][:12]} ") and second["command"].startswith(f"sticker-box remove {a['ref'][:12]} ")
+    run_cli(*shlex.split(first["command"])[1:])
     assert run_cli("info", "--box", str(root))["items"] == 1
+
+
+def test_a_bigger_file_of_the_same_size_is_not_preferred(box, run_cli, tmp_path):
+    from PIL import Image
+
+    root = box("gallery", "en")
+    (a,) = stage(run_cli, root, GENERIC / "photo-with-text.jpg")
+    run_cli("commit", a["ref"], "--box", str(root), "--license", "unknown")
+    export = tmp_path / "export.png"
+    with Image.open(GENERIC / "photo-with-text.jpg") as im:
+        im.save(export)
+    assert export.stat().st_size > (GENERIC / "photo-with-text.jpg").stat().st_size
+    (b,) = stage(run_cli, root, export)
+    out = run_cli("commit", b["ref"], "--box", str(root), "--license", "unknown")
+    (rel,) = [r for r in out["relations"] if r["ref"] == a["ref"]]
+    assert rel["suggested"][0]["command"].startswith(f"sticker-box remove {b['ref'][:12]} ")
+
+
+def test_a_larger_new_copy_never_offers_to_remove_the_stored_one_before_commit(box, run_cli, tmp_path):
+    from PIL import Image
+
+    root = box("gallery", "en")
+    small = tmp_path / "small.png"
+    with Image.open(GENERIC / "photo-with-text.jpg") as im:
+        im.resize((im.width // 2, im.height // 2)).save(small)
+    (a,) = stage(run_cli, root, small)
+    run_cli("commit", a["ref"], "--box", str(root), "--license", "unknown")
+    (b,) = stage(run_cli, root, GENERIC / "photo-with-text.jpg")
+    (dup,) = [d for d in b["duplicates"] if d["ref"] == a["ref"]]
+    assert [s["command"].split()[2] for s in dup["suggested"]] == [b["ref"][:12]]
+    assert "commit it" in dup["suggested"][0]["effect"]
+    out = run_cli("commit", b["ref"], "--box", str(root), "--license", "unknown")
+    (rel,) = [r for r in out["relations"] if r["ref"] == a["ref"]]
+    assert rel["suggested"][0]["command"].startswith(f"sticker-box remove {a['ref'][:12]} ")
 
 
 def test_near_duplicate_is_reported_and_linked_in_a_gallery(box, run_cli, tmp_path):

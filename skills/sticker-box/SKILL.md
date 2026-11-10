@@ -85,8 +85,9 @@ The box never refuses or removes an image because it resembles another (only the
 file is never stored twice). `stage` lists matches under `duplicates`, and `commit` under
 `relations`, each with a `kind`, a `file` you can look at, and `suggested`: ready-to-run
 `sticker-box remove ...` commands with their `effect`, the likelier choice first (for the same
-picture, keep the larger or animated one). Look at both images, then run one suggestion, or
-none to keep both. A near-duplicate means the two *look* alike (even at distance 0 they can be
+picture, keep the larger or animated one; on a tie, the stored one). Look at both images, then
+run one suggestion, or none to keep both. At `stage` only the new file is offered for removal;
+to keep a better new copy, commit it first, then follow the suggestion `commit` gives. A near-duplicate means the two *look* alike (even at distance 0 they can be
 different files, e.g. the same template with another caption). `commit` checks again and can
 list matches `stage` did not, when similar images were stored in between. A crop, rotation or still taken from an animation is often a different
 sticker worth keeping.

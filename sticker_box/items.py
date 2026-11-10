@@ -84,10 +84,11 @@ def _matches(box, policy: dict, sidecar: dict, exclude: str | None = None) -> li
 
 
 
-def _fresh_analysis(box, policy: dict, src, sha: str) -> dict:
-    """Metadata, keyframes, features and SIFT matches recomputed from the staged file itself at
-    commit, so nothing stored comes from a sidecar someone could have edited. Only the OCR hint,
-    the original name, licence and source are taken from staging."""
+def _fresh_analysis(box, policy: dict, src) -> dict:
+    """Metadata, keyframes and features recomputed from the staged file itself at commit, so
+    nothing stored comes from a sidecar someone could have edited. Only the OCR hint, the
+    original name, licence and source are taken from staging. SIFT matching waits until the
+    commit is known to be valid."""
     from . import analysis, features
 
     result = analysis.analyze(src, policy["analysis"])
@@ -98,10 +99,8 @@ def _fresh_analysis(box, policy: dict, src, sha: str) -> dict:
         "sift_sets": [],
         "sift_matches": [],
     }
-    sift = policy["duplicates"]["sift"]
-    if sift:
+    if policy["duplicates"]["sift"]:
         out["sift_sets"] = features.compute(result, policy)
-        out["sift_matches"], _ = features.match(box.conn, out["sift_sets"], (result.info.width, result.info.height), sift, exclude=sha)
     return out
 
 
@@ -118,7 +117,7 @@ def commit(box, ref: str, tags: list[str], defines: list[tuple[str, str]], value
         raise BoxError("not_found", f"the staged file for {sha} is gone (temporary/ was cleaned); stage it again", ref=sha)
     if analysis.sha256_file(src) != sha:
         raise BoxError("changed", f"the staged file for {sha[:12]} no longer matches its sha256; stage the file again", ref=sha)
-    fresh = _fresh_analysis(box, policy, src, sha)
+    fresh = _fresh_analysis(box, policy, src)
     sidecar = {**sidecar, **fresh}
     defaults = {"license": sidecar.get("license"), "source": sidecar.get("source")}
     merged = {**defaults, **{k: v for k, v in values.items() if v is not None}}
@@ -127,9 +126,14 @@ def commit(box, ref: str, tags: list[str], defines: list[tuple[str, str]], value
     problems += field_problems(policy, merged)
     problems += plan.problems
     problems += vocab.cardinality(policy, plan.labels, plan.attempted)
-    matches = _matches(box, policy, sidecar)
     if problems:
         raise BoxError("invalid", f"{len(problems)} problem(s); nothing was stored", problems=problems, warnings=plan.warnings)
+    if policy["duplicates"]["sift"]:
+        from . import features
+
+        size = (sidecar["media"]["width"], sidecar["media"]["height"])
+        sidecar["sift_matches"], _ = features.match(box.conn, sidecar["sift_sets"], size, policy["duplicates"]["sift"], exclude=sha)
+    matches = _matches(box, policy, sidecar)
     from . import limits
 
     to_remove = limits.plan_room(box, policy, sidecar["media"]["bytes"], 1, auto_cleanup)

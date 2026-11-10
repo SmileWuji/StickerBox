@@ -9,10 +9,11 @@ Read the box's `README.md` for its limits and expiry first.
 
 ## Duplicates, crops and rotations
 
-`sticker-box dupes --json` lists groups of related images. Each group has a suggested `keeper`
-(the largest, then the oldest), its `members` with paths and sizes, `suggested` commands that
-would remove every member but the keeper, and `links` saying how they relate. The tool never
-runs those commands itself:
+`sticker-box dupes --json` lists groups of related images. Each group has a `keeper` (the
+largest, then the oldest), its `members` with paths and sizes, `links` saying how they relate,
+and `suggested` commands that remove only copies of the same picture (`near_duplicate`,
+`duplicate`), keeping the larger, then older, copy of each. The tool never runs those commands
+itself:
 
 - `near_duplicate` / `duplicate`: the same picture, re-saved or resized
 - `crop_of` / `contains`: one shows part of the other (for example, a screenshot that contains
@@ -22,9 +23,11 @@ runs those commands itself:
 - `overlap`: they share part of a picture; often a false alarm, look before acting
 
 Look at the members before removing anything. A zoomed crop of a meme is often a different joke
-worth keeping. The suggested keeper is only the largest image: when a screenshot contains a
-picture, the screenshot is larger, but the clean picture is usually the one to keep. Remove only true copies: `sticker-box remove <ref> --json`. Links are evidence,
-not orders; about one in twenty may be a false alarm.
+worth keeping, so crops, rotations, frames and overlaps get no suggested command. The `keeper`
+is only the largest image: when a screenshot contains a picture, the screenshot is larger, but
+the clean picture is usually the one to keep. Remove only true copies:
+`sticker-box remove <ref> --json`. Links are evidence, not orders; about one in twenty may be a
+false alarm.
 
 ## Limits and cleanup
 
