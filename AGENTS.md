@@ -254,10 +254,10 @@ reproduces each number without the GPU. Run long Qwen jobs from one sequential s
 
 ### Pre-release (started 2026-11-10)
 
-- [x] Leak scan of the tree and history; a series title and a local path replaced in the tree (044795e)
-- [x] Performance section with the test machine in `README.md` (65f87c6)
-- [x] Code review of the backlog work: 15 findings, fixed in b736d88 (duplicate suggestions, commit order, command check) and 535d8b6 (benchmark scripts); the watermark metric stays (the gold set defines watermarks as @ handles); re-scoring changed only the partial v7 run
-- [ ] History rewrite to drop the series title (9e2ef93, 9a79223) and the local path (24b952a): owner's call, asked 2026-11-10
+- [x] Leak scan of the tree and history; a series title and a local path replaced in the tree (9f92474)
+- [x] Performance section with the test machine in `README.md` (82eeb71)
+- [x] Code review of the backlog work: 15 findings, fixed in 4578122 (duplicate suggestions, commit order, command check) and 23ea2d1 (benchmark scripts); the watermark metric stays (the gold set defines watermarks as @ handles); re-scoring changed only the partial v7 run
+- [x] History rewritten with `git filter-repo --replace-text` (owner's choice, 2026-11-10): the series title and the local path are gone from every object; the final tree is unchanged, all 69 commits kept, hashes changed; old objects pruned. The pre-rewrite history is in `../StickerBoxAICapability-prerewrite-261110.bundle`, outside the repo; delete it once the public repository is up
 - [x] One `sticker-box` skill (owner, 2026-11-10): `SKILL.md` as the core, `workflows/` for tagging, buffer triage, gallery maintenance, vocabulary cleanup and policy changes; the `tag-*` skills stay as they are
 - [x] `skills/sticker-box/examples/<task>/{before/, after/, commands.sh}` with generated, repository-owned images, built by `scripts/make_skill_examples.py`; a test re-runs every `commands.sh`
 - [x] Docs follow the merge: `skills/README.md`, `docs/integration.md`, §10 here, decisions 43 and 44; the command check covers `workflows/`, `tests/test_skill_examples.py` re-runs every `commands.sh`
