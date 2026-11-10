@@ -177,3 +177,22 @@ under "For the owner", continue. Each entry says what to change if the owner dis
     (copies, crops, a planted request, an injected note, an expired item), so success is checked,
     not judged. The fixes they prompted are listed in the benchmark report, section 8.
 
+
+## Pre-release (2026-11-10)
+
+43. **One `sticker-box` skill with workflow files and worked examples; the `tag-*` skills stay
+    apart** (the owner's call). The four tool skills (`sticker-tagging`, `buffer-triage`,
+    `gallery-maintenance`, `vocab-cleanup`) became `skills/sticker-box/workflows/`, with policy
+    changes moved there from `SKILL.md`; `SKILL.md` keeps the commands, the safety rules and a
+    task table. The reason for separate tool skills (a gallery agent should not load tagging
+    guidance) holds, since a workflow file is read only for its task. Examples are real boxes
+    before and after a hand-written `commands.sh`, drawn and built by
+    `scripts/make_skill_examples.py` under a fixed clock and re-run by a test. The `tag-*` skills
+    are each one benchmarked prompt. Undo: `git mv` the workflow files back into skill folders
+    and restore their front matter.
+
+44. **Duplicate suggestions remove only copies of the same picture, and never the stored item
+    before a commit** (pre-release review). One quality rule for `stage`, `commit` and `dupes`:
+    larger, then animated, ties to the stored or older copy; file size is not quality. Crops,
+    rotations, frames and overlaps get no command, because a group can be joined by a false link
+    and a crop is often a different image. Undo: `sticker_box/dupes.py`.

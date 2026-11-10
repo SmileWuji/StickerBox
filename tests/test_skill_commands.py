@@ -13,7 +13,8 @@ from sticker_box.cli import build_parser
 from sticker_box.errors import BoxError
 
 ROOT = Path(__file__).resolve().parent.parent
-SOURCES = sorted(ROOT.glob("skills/**/*.md")) + sorted(ROOT.glob("docs/*.md")) + [ROOT / "README.md"]
+SOURCES = [p for p in sorted(ROOT.glob("skills/**/*.md")) if not {"before", "after"} & set(p.parts)]
+SOURCES += sorted(ROOT.glob("docs/*.md")) + [ROOT / "README.md"]
 SPAN = re.compile(r"`(sticker-box [^`]+)`")
 PLACEHOLDER = re.compile(r"<[^<>]+>")
 SPECIAL = {"<rule>": "limits", "<json>": "{}", "<words>": "word"}

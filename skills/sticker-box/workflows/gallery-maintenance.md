@@ -1,0 +1,43 @@
+# Gallery maintenance
+
+Read the box's `README.md` for its limits and expiry first. `examples/gallery-maintenance/` shows
+a whole session.
+
+## Duplicates, crops and rotations
+
+`sticker-box dupes --json` lists groups of related images. Each group has a `keeper` (the
+largest, then the oldest), its `members` with paths and sizes, `links` saying how they relate,
+and `suggested` commands that remove only copies of the same picture (`near_duplicate`,
+`duplicate`), keeping the larger, then older, copy of each. The tool never runs those commands
+itself:
+
+- `near_duplicate` / `duplicate`: the same picture, re-saved or resized
+- `crop_of` / `contains`: one shows part of the other (for example, a screenshot that contains
+  the picture)
+- `rotation`: the same picture turned
+- `frame_of` / `has_frame` / `shares_frames`: a still taken from an animation
+- `overlap`: they share part of a picture; often a false alarm, look before acting
+
+Look at the members before removing anything. A zoomed crop of a meme is often a different joke
+worth keeping, so crops, rotations, frames and overlaps get no suggested command. The `keeper`
+is only the largest image: when a screenshot contains a picture, the screenshot is larger, but
+the clean picture is usually the one to keep. Remove only true copies:
+`sticker-box remove <ref> --json`. Links are evidence, not orders; about one in twenty may be a
+false alarm.
+
+## Limits and cleanup
+
+- `sticker-box info --json` shows usage against the limits.
+- `sticker-box clean --json` removes staged files older than the grace period and expired
+  images. It never touches images that have not expired.
+- A write that would pass a limit fails with exit 3. Decide what goes: remove some images, or
+  retry with `--auto-cleanup`, which removes expired images and then the oldest ones and lists
+  every one it removed.
+
+## Audit
+
+`sticker-box check --json` compares every image with the current rules and the folder with the
+index. It changes nothing. Fix item problems with `edit`. Broken staged files go with
+`clean --all`. Orphan files (files in `persistent/` the index does not know) are not touched by
+any command: report them to whoever runs you. `reindex` rebuilds keyframes, features and links
+after a tool upgrade (slow on big boxes).

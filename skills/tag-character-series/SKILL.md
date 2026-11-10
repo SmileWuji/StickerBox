@@ -15,7 +15,7 @@ together, because each one narrows the other.
    origin. A pack named after a character or a work settles that part. Pack and folder names
    are often romanised, shortened or carry an uploader's suffix (`sato_hanako_by_SomeBot`,
    `MGTalk2`): search the likely name on bangumi.tv before deciding the pack names nothing.
-2. **The reference sources from the sticker-tagging skill**, in the order the box's notes give:
+2. **The reference sources from the `sticker-box` skill's tagging workflow**, in the order the box's notes give:
    - [bangumi-data](https://github.com/bangumi-data/bangumi-data): anime works only (TV, web,
      film, OVA), each with its original title, translated titles (`titleTranslate`, including
      `zh-Hans`) and a link to its page on bangumi.tv. No characters, no games.

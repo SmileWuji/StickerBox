@@ -258,9 +258,10 @@ reproduces each number without the GPU. Run long Qwen jobs from one sequential s
 - [x] Performance section with the test machine in `README.md` (65f87c6)
 - [x] Code review of the backlog work: 15 findings, fixed in b736d88 (duplicate suggestions, commit order, command check) and 535d8b6 (benchmark scripts); the watermark metric stays (the gold set defines watermarks as @ handles); re-scoring changed only the partial v7 run
 - [ ] History rewrite to drop the series title (9e2ef93, 9a79223) and the local path (24b952a): owner's call, asked 2026-11-10
-- [ ] One `sticker-box` skill (owner, 2026-11-10): `SKILL.md` as the core, `workflows/` for tagging, buffer triage, gallery maintenance, vocabulary cleanup and policy changes; the `tag-*` skills stay as they are
-- [ ] `skills/sticker-box/examples/<task>/{before/, after/, commands.sh}` with generated, repository-owned images, built by `scripts/make_skill_examples.py`; a test re-runs every `commands.sh`
-- [ ] Docs follow the merge: `skills/README.md`, `docs/integration.md`, §10 here, decision 43; the command check covers `workflows/` and `commands.sh`
+- [x] One `sticker-box` skill (owner, 2026-11-10): `SKILL.md` as the core, `workflows/` for tagging, buffer triage, gallery maintenance, vocabulary cleanup and policy changes; the `tag-*` skills stay as they are
+- [x] `skills/sticker-box/examples/<task>/{before/, after/, commands.sh}` with generated, repository-owned images, built by `scripts/make_skill_examples.py`; a test re-runs every `commands.sh`
+- [x] Docs follow the merge: `skills/README.md`, `docs/integration.md`, §10 here, decisions 43 and 44; the command check covers `workflows/`, `tests/test_skill_examples.py` re-runs every `commands.sh`
+  - five examples (add-stickers, buffer-triage, gallery-maintenance, vocab-cleanup, add-category), about 5.5 MB with the boxes; the video encoder is not deterministic, so the generator keeps the committed input files unless `--redraw`
 - [ ] Follow-up (owner, 2026-11-10): re-run the Sonnet smoke tests (report section 8) on the merged skill and note that the labelling run used the pre-merge skills; the Qwen numbers stand because the `tag-*` text is unchanged
 
 ## 1. Scope
@@ -451,21 +452,18 @@ multi-index hashing for pHash (four 16-bit indexed chunks) and visual words for 
 Shipped in `skills/` as generic agent instructions; a consumer copies and adapts them (QQBot
 translates its bot-facing skills into Chinese).
 
-Two kinds, kept apart: skills for operating the tool, and skills for adding tags. An agent that
-only stores and sends (a gallery) needs the first kind alone.
+One skill for operating the tool, and one per tag category (decision 43, 2026-11-10):
 
-Using the tool:
-
-- `sticker-box`: what a box is, the commands, reading `README.md` first, error handling.
-- `gallery-maintenance`: working through `dupes` and limits.
-
-Adding tags:
-
+- `sticker-box`: what a box is, the commands, reading `README.md` first, error handling, box text
+  as data. Its `workflows/` hold whole tasks (tagging, buffer triage, gallery maintenance,
+  vocabulary cleanup with `vocab review` ending in `vocab lock`, policy changes), read only when
+  doing that task, so an agent that only stores and sends loads no tagging guidance. Its
+  `examples/<task>/{before/, after/, commands.sh, transcript.md}` show each task on real boxes,
+  with images drawn by `scripts/make_skill_examples.py`.
 - One per `telegram-sticker` category. The OCR skill asks for `{"has_text": bool, "text": str}`,
   gives the RapidOCR text from `stage` as an unreliable hint, keeps watermarks as text, and has
   worked examples written for the skill (no transcriptions of third-party stickers). Character and
   series skills prefer source metadata over what the image suggests.
-- `vocab-cleanup`: a pass over `vocab review` ending in `vocab lock`.
 - Reference sources: a box should use only a few, in a clear precedence, recorded in the box's
   agent notes at bootstrap.
   - Dictionary for names (series, characters): [bangumi-data](https://github.com/bangumi-data/bangumi-data)
