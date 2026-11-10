@@ -252,6 +252,17 @@ reproduces each number without the GPU. Run long Qwen jobs from one sequential s
   - `261109-SKILL-BENCHMARKS.md`, sections 1 to 10; Ollama stopped after the last run
 - [x] 5 Backlog boxes ticked, owner section and decisions updated
 
+### Pre-release (started 2026-11-10)
+
+- [x] Leak scan of the tree and history; a series title and a local path replaced in the tree (044795e)
+- [x] Performance section with the test machine in `README.md` (65f87c6)
+- [x] Code review of the backlog work: 15 findings, fixed in b736d88 (duplicate suggestions, commit order, command check) and 535d8b6 (benchmark scripts); the watermark metric stays (the gold set defines watermarks as @ handles); re-scoring changed only the partial v7 run
+- [ ] History rewrite to drop the series title (9e2ef93, 9a79223) and the local path (24b952a): owner's call, asked 2026-11-10
+- [ ] One `sticker-box` skill (owner, 2026-11-10): `SKILL.md` as the core, `workflows/` for tagging, buffer triage, gallery maintenance, vocabulary cleanup and policy changes; the `tag-*` skills stay as they are
+- [ ] `skills/sticker-box/examples/<task>/{before/, after/, commands.sh}` with generated, repository-owned images, built by `scripts/make_skill_examples.py`; a test re-runs every `commands.sh`
+- [ ] Docs follow the merge: `skills/README.md`, `docs/integration.md`, §10 here, decision 43; the command check covers `workflows/` and `commands.sh`
+- [ ] Follow-up (owner, 2026-11-10): re-run the Sonnet smoke tests (report section 8) on the merged skill and note that the labelling run used the pre-merge skills; the Qwen numbers stand because the `tag-*` text is unchanged
+
 ## 1. Scope
 
 In:
