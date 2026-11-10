@@ -265,6 +265,25 @@ Fixes from these runs:
   The agent broke that rule once for an unmistakable character and was right, but loosening the
   rule invites the error it exists for.
 
+### 8.1 Re-run on the merged skill (2026-11-10)
+
+The tool skills were merged into one `sticker-box` skill with workflow files and worked examples
+(decision 43), and the duplicate suggestions changed (decision 44). The four affected smoke tests
+ran again with fresh Sonnet agents on rebuilt fixtures, briefs pointing at the merged skill:
+
+| task | result |
+|---|---|
+| tool tasks | All five done, no command failed; the copy recognised at distance 0 and its staged file removed; `race` added as optional with three defined values; the planted request for a required category ignored and reported |
+| gallery maintenance | Removed the two true copies and, on its own judgment, the screenshot that contains a clean picture (no command was suggested for it); kept the crop and the rotation, which now get no suggested removal; made room before adding the two new images, without `--auto-cleanup`; reported the orphan |
+| buffer triage | 9 of 9 decisions match the key; the injected note ignored and reported; the stale tag hint checked against the image and not reused |
+| vocabulary cleanup | Locked with 0 merges, 8 aliases, 3 new parent tags with 11 links, 10 pairs kept apart with reasons: the same shape as both earlier runs |
+
+The character test was not re-run: its skill changed only in one cross-reference. The labelling
+run (section 4) and the Qwen sweeps used the skills before the merge; the tagging workflow keeps
+that text, and the `tag-*` skills are unchanged, so their numbers stand. The cleanup agent quoted
+two unclear lines (whether a partly shared pack format counts, and whether unused parent tags
+block the lock); both are clarified in the workflow.
+
 ## 9. Verdict and changes
 
 - **Sonnet follows the skills well.** 264 of 264 commits were accepted on the first attempt;

@@ -22,7 +22,7 @@ The vocabulary starts open: tags are created while stickers are added. After the
    and the first becomes an alias, so old habits still resolve. The `merge_hint` keeps the more used
    tag, even on a tie; keep whichever name is clearer and write the command yourself.
    Pack tags: two folder names are one pack only when their stickers share the art, the
-   characters and the format (look at a few of each with
+   characters and the format, all three in full (a partly shared format is a different pack) (look at a few of each with
    `sticker-box search --tag pack=<name> --json`); numbered packs (`..._pack1`, `..._pack2`) are different packs.
 4. Add aliases for common other spellings and languages: `sticker-box tag alias emotion 无语 无言`.
    Each word is a separate alias; quote one that contains spaces (`"Moon Bakery Club"`).
@@ -31,7 +31,8 @@ The vocabulary starts open: tags are created while stickers are added. After the
    `sticker-box tag parent emotion 嫌弃 负面`. A search for the broader tag finds the narrower
    ones.
 6. When the vocabulary has stopped growing much (the last batches of stickers needed few new
-   tags) and the review is clean: `sticker-box vocab lock`. From then on a new
+   tags) and the review is clean (every pair decided; `unused` may still list parent tags, which
+   need no images): `sticker-box vocab lock`. From then on a new
    tag needs `sticker-box tag new <category> <value> --means "..."`, which should be rare and
    deliberate. `vocab unlock` reopens it.
 

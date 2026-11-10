@@ -262,8 +262,8 @@ reproduces each number without the GPU. Run long Qwen jobs from one sequential s
 - [x] `skills/sticker-box/examples/<task>/{before/, after/, commands.sh}` with generated, repository-owned images, built by `scripts/make_skill_examples.py`; a test re-runs every `commands.sh`
 - [x] Docs follow the merge: `skills/README.md`, `docs/integration.md`, §10 here, decisions 43 and 44; the command check covers `workflows/`, `tests/test_skill_examples.py` re-runs every `commands.sh`
   - five examples (add-stickers, buffer-triage, gallery-maintenance, vocab-cleanup, add-category), about 5.5 MB with the boxes; the video encoder is not deterministic, so the generator keeps the committed input files unless `--redraw`
-- [ ] Follow-up (owner, 2026-11-10): re-run the Sonnet smoke tests (report section 8) on the merged skill and note that the labelling run used the pre-merge skills; the Qwen numbers stand because the `tag-*` text is unchanged
-  - running: briefs point at the merged skill, fixtures rebuilt by `smoke_fixtures.py`, the vocab box restored from `bench/sonnet-box-pre-cleanup` (earlier log kept as `out/vocab-cleanup-premerge.md`); four Sonnet agents (tool, gallery, triage, vocab). Character test skipped: its skill changed only in one cross-reference. Next: score against `bench/smoke-keys/fixtures-key.json` and the earlier results, then update report section 8
+- [x] Follow-up (owner, 2026-11-10): re-run the Sonnet smoke tests (report section 8) on the merged skill and note that the labelling run used the pre-merge skills; the Qwen numbers stand because the `tag-*` text is unchanged
+  - running: briefs point at the merged skill, fixtures rebuilt by `smoke_fixtures.py`, the vocab box restored from `bench/sonnet-box-pre-cleanup` (earlier log kept as `out/vocab-cleanup-premerge.md`); four Sonnet agents (tool, gallery, triage, vocab). Character test skipped: its skill changed only in one cross-reference. Done: tool 5/5 and both policy cases, triage 9/9, gallery kept crop and rotation, cleanup consistent; report section 8.1; two workflow lines clarified
 
 ## 1. Scope
 
