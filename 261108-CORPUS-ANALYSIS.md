@@ -13,7 +13,7 @@ on the dev container (12 cores, WSL2). Numbers only; no image content is recorde
 - The one failure was a `.webm` whose EBML DocType says `matroska` while it carries VP9. Fixed the
   same day: Matroska with a WebM codec (VP8, VP9, AV1) is accepted as WEBM.
 - Keyframes per animation: min 1, p50 7, p95 39, max 64 (the cap).
-- Port check against `../GuidedStickerBootCamp/260917-CORPUS-NUMBERS.md`, same five-pack WEBM
+- Port check against GuidedStickerBootCamp's `260917-CORPUS-NUMBERS.md`, same five-pack WEBM
   subset and defaults (`drop_thr 0.10`, cap 64): 172 WEBM, 9,867 frames, 2,045 keyframes, 4.8×,
   1 at the cap. Identical to BootCamp's numbers, so pHash (now `cv2.dct`) and the keyframe walk
   ported unchanged.

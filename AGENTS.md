@@ -2,8 +2,9 @@
 
 `sticker-box`: a standalone CLI that keeps a directory of images (stickers, a gallery, a short-lived
 buffer) with a SQLite database, a generated manual, and policy rules it enforces. An AI agent
-operates it; a human can read and use the same directory. QQBot (`../QQBot`) is the first user and
-the owner wires it in on that side; nothing in this repo depends on QQBot.
+operates it; a human can read and use the same directory. QQBot, the owner's chat bot, is the
+first user and the owner wires it in on that side; nothing in this repo depends on QQBot or on any
+other project of the owner's.
 
 This file is the plan and the progress record. The reasoning behind each decision is in
 `261108-DESIGN-NOTES.md`; notes are `YYMMDD-XXX.md` and the newest wins when two disagree.
@@ -71,8 +72,8 @@ Tick a box in the same commit as the work. Bold lines are a milestone's exit cri
 
 ### M2. Media analysis
 - [x] `media.py`: sniff format, dimensions, animated, frame count, duration, fps, audio, bytes
-- [x] pHash and keyframes ported from `../GuidedStickerBootCamp/app/` (`phash.py`, `keyframes.py`, `media.py`), defaults kept (`drop_thr 0.10`, cap 64); BootCamp's numbers reproduced on a corpus subset
-- [x] RapidOCR hint with the noise gate ported from `../GuidedStickerObservatory/service/noise.py`; on animations, run on keyframes and merge
+- [x] pHash and keyframes ported from the owner's GuidedStickerBootCamp (`app/phash.py`, `app/keyframes.py`, `app/media.py`), defaults kept (`drop_thr 0.10`, cap 64); BootCamp's numbers reproduced on a corpus subset
+- [x] RapidOCR hint with the noise gate ported from the owner's GuidedStickerObservatory (`service/noise.py`); on animations, run on keyframes and merge
 - [x] `frames <ref>`: contact sheet of keyframes, labelled with index and time, written to `temporary/` (or `--out`); `analyze <path>` prints the analysis without a box
 - [x] **`stage`-less analysis of every file in the corpus finishes without error, and contact sheets of five animations read correctly by eye**
 
@@ -161,14 +162,13 @@ Not scheduled; pick up when the owner asks.
         set and report on a held-out split. Then run Sonnet once on the original and once on the
         Qwen-tuned wording; if the tuned wording is worse for Sonnet, record that and keep the
         original as Sonnet's reference. Prior art: the Observatory OCR benchmark and the old
-        Tagger evaluation (`../GuidedStickerTagger-SNAPSHOT-260920/eval/`). DeepSeek, the model
+        Tagger evaluation (both the owner's, unpublished). DeepSeek, the model
         QQBot runs on, can be added as a third.
       - Gold labels, **the owner's action item** (counted 2026-11-09; all existing labels map to
-        current corpus files). Existing: the Observatory OCR gold
-        (`../GuidedStickerObservatory/.claude/skills/benchmark-observatory/bench/gold/`: 127
-        has-text, 14 with watermarks, 20 transcriptions, 95 noise) and the old Tagger gold
-        (`../Tagger-Benchmark/labels/phase_b_gt.json`: 150 stickers reviewed by the owner, 138
-        named, 31 characters in 11 series, 10 without a character, 10 probes). To add, aiming to
+        current corpus files). Existing, both outside this repo and given to
+        `scripts/bench_skills/sample.py` as `--gold-ocr` and `--gold-tagger`: the Observatory OCR
+        gold (127 has-text, 14 with watermarks, 20 transcriptions, 95 noise) and the old Tagger
+        gold (150 stickers reviewed by the owner, 138 named, 31 characters in 11 series, 10 without a character, 10 probes). To add, aiming to
         tell two models apart by about 10 points (roughly 5 to 6 hours in all):
         - `tag-text`, has text: about 75 more (to about 200), chosen so at least 40 have a
           watermark.
@@ -208,14 +208,13 @@ the winning wording ships for every model; `tag-character-series`, `vocab-cleanu
 skills are smoke-tested with Sonnet only. Dataset names never appear in the repository; code
 names live in the git-ignored `testdata/private/CODENAMES.txt`.
 
-Finished 2026-11-09: every step below is done. The Qwen runs needed Ollama started with
-`OLLAMA_MODELS=../OCR-Benchmark/.ollama-models ollama serve` (run from this repo); every model call
-is cached in `testdata/private/bench/qwen/cache.jsonl`, so `scripts/bench_skills/qwen.py score`
+Finished 2026-11-09: every step below is done. The Qwen runs need a local Ollama serving
+`qwen3.5:9b` (`ollama pull qwen3.5:9b`, then `ollama serve`); every model call is cached in `testdata/private/bench/qwen/cache.jsonl`, so `scripts/bench_skills/qwen.py score`
 reproduces each number without the GPU. Run long Qwen jobs from one sequential script, never with
 `pgrep` waits on each other, and not while several Sonnet agents run (the host swaps).
 
 - [x] 0.1 Manifest (path, size, sha256) of all four sticker sources written to the scratchpad
-- [x] 0.2 Packs moved into `../GuidedSticker-Project-TestData-Consolidated/`
+- [x] 0.2 Packs moved into one consolidated corpus directory outside the repo
 - [x] 0.3 Manifest verified against the consolidated directory (2,975 files, 33 packs); emptied source folders removed with `rmdir` only
   - 3,008 files (2,975 stickers and 33 manifests) verified by sha256, 0 mismatches; the test-data repo keeps only its own files; no symlink at the old path (owner's choice)
 - [x] 0.4 `testdata/private` relinked to the consolidated directory, code names updated; private tests pass
@@ -233,7 +232,7 @@ reproduces each number without the GPU. Run long Qwen jobs from one sequential s
 - [x] 4.3 10% checked and corrected by the main agent; Sonnet accuracy per field computed
   - n=26 (seeded): has-text 26/26; transcription exact 8/9 (CER 0.03); emotion P 0.98 R 1.00; visual P 0.99 R 0.97; character P 1.00 R 0.70; series P 1.00 R 0.80. Reviewed against Sonnet's labels, so an upper bound. Corrected gold in `bench/checked.json`
 - [x] 4.4 Ollama up with `qwen3.5:9b`; Qwen harness built; Qwen noise floor measured
-  - Ollama runs with `OLLAMA_MODELS=../OCR-Benchmark/.ollama-models` (model already there); harness `scripts/bench_skills/qwen.py`. tag-text v0 on dev: answers differ on 1 of 78 between runs (with the OCR hint passed, as in production; 0 of 78 without it)
+  - Ollama serves `qwen3.5:9b`; harness `scripts/bench_skills/qwen.py`. tag-text v0 on dev: answers differ on 1 of 78 between runs (with the OCR hint passed, as in production; 0 of 78 without it)
 - [x] 4.5 Qwen sweep `tag-text` (dev), winner on test
   - wave 1 (v1 to v6) on the human dev labels: flat (has-text 0.885 to 0.897, n=78; only v4 "a lone watermark counts" +1). Dominant error: 5 of 6 watermark-only stickers read as no text by every variant. Wave 2a: image size is the watermark lever (v4 at 512/768/1024 px: has-text 0.897/0.910/0.923, watermark recall 0.6/0.7/0.8, latency 1.1/1.3/2.2 s); v7's corner wording does nothing. Image size is an operating point for the report, not skill wording. Wave 3 (combine, ablate) waits for the reference transcriptions. Transcription scores wait for the Sonnet reference (only 11 human transcriptions on dev)
   - wave 3 done: v10 (v8 without the partial-watermark line) is the dev winner (has-text 0.910, watermark 0.6, CER 0.134); v8@1024 has-text 0.936. Sonnet test (a original, b v10): has-text 0.955 both; v10's vertical line reversed whole-image order on 2 of 9; v11 scopes it to one block, Sonnet fix check fine. Next: v11 on Qwen dev (chain3), then v0 and v11 once on test, then ship v11 into `skills/tag-text`
@@ -257,13 +256,16 @@ reproduces each number without the GPU. Run long Qwen jobs from one sequential s
 - [x] Leak scan of the tree and history; a series title and a local path replaced in the tree (9f92474)
 - [x] Performance section with the test machine in `README.md` (82eeb71)
 - [x] Code review of the backlog work: 15 findings, fixed in 4578122 (duplicate suggestions, commit order, command check) and 23ea2d1 (benchmark scripts); the watermark metric stays (the gold set defines watermarks as @ handles); re-scoring changed only the partial v7 run
-- [x] History rewritten with `git filter-repo --replace-text` (owner's choice, 2026-11-10): the series title and the local path are gone from every object; the final tree is unchanged, all 69 commits kept, hashes changed; old objects pruned. The pre-rewrite history is in `../StickerBoxAICapability-prerewrite-261110.bundle`, outside the repo; delete it once the public repository is up
+- [x] History rewritten with `git filter-repo --replace-text` (owner's choice, 2026-11-10): the series title and the local path are gone from every object; the final tree is unchanged, all 69 commits kept, hashes changed; old objects pruned. The pre-rewrite history is in a bundle beside the repo on the owner's machine (`StickerBoxAICapability-prerewrite-261110.bundle`); delete it once the public repository is up
 - [x] One `sticker-box` skill (owner, 2026-11-10): `SKILL.md` as the core, `workflows/` for tagging, buffer triage, gallery maintenance, vocabulary cleanup and policy changes; the `tag-*` skills stay as they are
 - [x] `skills/sticker-box/examples/<task>/{before/, after/, commands.sh}` with generated, repository-owned images, built by `scripts/make_skill_examples.py`; a test re-runs every `commands.sh`
 - [x] Docs follow the merge: `skills/README.md`, `docs/integration.md`, §10 here, decisions 43 and 44; the command check covers `workflows/`, `tests/test_skill_examples.py` re-runs every `commands.sh`
   - five examples (add-stickers, buffer-triage, gallery-maintenance, vocab-cleanup, add-category), about 5.5 MB with the boxes; the video encoder is not deterministic, so the generator keeps the committed input files unless `--redraw`
 - [x] Follow-up (owner, 2026-11-10): re-run the Sonnet smoke tests (report section 8) on the merged skill and note that the labelling run used the pre-merge skills; the Qwen numbers stand because the `tag-*` text is unchanged
   - running: briefs point at the merged skill, fixtures rebuilt by `smoke_fixtures.py`, the vocab box restored from `bench/sonnet-box-pre-cleanup` (earlier log kept as `out/vocab-cleanup-premerge.md`); four Sonnet agents (tool, gallery, triage, vocab). Character test skipped: its skill changed only in one cross-reference. Done: tool 5/5 and both policy cases, triage 9/9, gallery kept crop and rotation, cleanup consistent; report section 8.1; two workflow lines clarified
+- [x] Standalone check (owner, 2026-11-10): a fresh clone with its own venv and no `testdata/private` passes
+      the tests (238, 3 private ones skipped) and `scripts/smoke.sh`; the notes no longer point at the owner's
+      sibling directories, and `smoke_fixtures.py` reads whatever corpora are linked instead of a fixed folder
 
 ## 1. Scope
 
@@ -285,15 +287,16 @@ Out:
 
 ## 2. Lineage
 
-Port ideas and small modules, never import from sibling repos:
+Ideas and small modules ported from the owner's earlier projects. They are not published, and
+nothing here needs them to build, test or run:
 
 | from | take |
 |---|---|
-| `../GuidedStickerBootCamp/app/` | pHash, keyframe walk, media decoding; defaults from `260917-CORPUS-NUMBERS.md` |
-| `../GuidedStickerObservatory/service/noise.py` | the noise gate for RapidOCR text; watermarks such as a pack's `@handle` are text, not noise |
-| `../GuidedStickerTagger-SNAPSHOT-260920/` | one narrow question per tag class; composite on white before reading; character ID by vision is unreliable |
-| `../260622-PerceptualHash-Brainstorming.txt` | SIFT/ORB + RANSAC for stills against animation frames |
-| `../GuidedStickerPostOffice/260919-Opus-Consultation.md` | short Chinese queries need `LIKE`, not FTS5 trigram |
+| GuidedStickerBootCamp, `app/` | pHash, keyframe walk, media decoding; defaults from `260917-CORPUS-NUMBERS.md` |
+| GuidedStickerObservatory, `service/noise.py` | the noise gate for RapidOCR text; watermarks such as a pack's `@handle` are text, not noise |
+| GuidedStickerTagger (snapshot of 2026-09-20) | one narrow question per tag class; composite on white before reading; character ID by vision is unreliable |
+| a perceptual-hash brainstorm (2026-06-22) | SIFT/ORB + RANSAC for stills against animation frames |
+| GuidedStickerPostOffice, `260919-Opus-Consultation.md` | short Chinese queries need `LIKE`, not FTS5 trigram |
 
 Private test corpora, never committed (§11): the owner's sticker collections (about 1,900
 WebP/WebM files across many packs). Their paths live only in the git-ignored
@@ -489,7 +492,7 @@ One skill for operating the tool, and one per tag category (decision 43, 2026-11
 - Comments only where the code cannot say it. Commit messages: one-line summary, then Problem,
   Solution, Testing sections in brief prose.
 - Dated notes (`YYMMDD-XXX.md`) for measurements and decisions; the newest wins.
-- This workspace sits on an NTFS mount: `git config` writes fail, so edit `.git/config` by hand;
+- The owner's workspace sits on an NTFS mount: `git config` writes fail, so edit `.git/config` by hand;
   a venv cannot be created on it, so the dev venv is `~/.venvs/sticker-box`
   (`--system-site-packages`, then `pip install -e . --no-deps --no-build-isolation`); the pytest
   cache plugin is off for the same reason. Run tests with `~/.venvs/sticker-box/bin/python -m pytest -q`.

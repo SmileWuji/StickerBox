@@ -10,7 +10,7 @@ A mini GuidedSticker: a generic, local image store driven by a CLI, meant to be 
 agent and, after enough use, readable by a human. The storage is the product: a SQLite database,
 a text manual that describes it, and the image files.
 
-First consumer: the QQ bot in `../QQBot` (大肥鱼), which has bash. It runs two instances:
+First consumer: the owner's QQ bot (大肥鱼), which has bash. It runs two instances:
 
 | profile | images | tags | box does |
 |---|---|---|---|
@@ -22,16 +22,18 @@ needs no importer for them.
 
 ### Lineage (reuse ideas, not code wholesale)
 
-- `../GuidedStickerBootCamp`: keyframe extraction and 64-bit pHash; defaults measured in
+The owner's earlier projects, not published and not needed here:
+
+- GuidedStickerBootCamp: keyframe extraction and 64-bit pHash; defaults measured in
   `260917-CORPUS-NUMBERS.md`.
-- `../GuidedStickerObservatory`: OCR. The benchmarked rescue tier is "RapidOCR text + image to a
+- GuidedStickerObservatory: OCR. The benchmarked rescue tier is "RapidOCR text + image to a
   VLM, text marked unreliable", and a noise gate (`service/noise.py`).
-- `../GuidedStickerTagger-SNAPSHOT-260920`: one narrow question per tag class; character ID by
+- GuidedStickerTagger (snapshot of 2026-09-20): one narrow question per tag class; character ID by
   vision does not work on this corpus (1 TP in 150); hair colour is wrong on greyscale input; 64%
   of "pose" tags were camera framing.
-- `../260622-PerceptualHash-Brainstorming.txt`: block pHash and ORB/SIFT + RANSAC for matching
+- A perceptual-hash brainstorm (2026-06-22): block pHash and ORB/SIFT + RANSAC for matching
   stills to animation frames.
-- `../GuidedStickerPostOffice/260919-Opus-Consultation.md`: Chinese two-character queries defeat
+- GuidedStickerPostOffice, `260919-Opus-Consultation.md`: Chinese two-character queries defeat
   FTS5 trigram; use `LIKE` for short queries.
 
 ## 2. The CLI enforces, the prompt guides

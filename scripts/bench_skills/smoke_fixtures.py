@@ -18,7 +18,9 @@ from PIL import Image, ImageDraw, ImageFont
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "tests"))
 
+from conftest import private_sources  # noqa: E402
 from sticker_box import presets, rules  # noqa: E402
 
 BENCH = ROOT / "testdata" / "private" / "bench"
@@ -44,9 +46,15 @@ def add(box: Path, path: Path, *commit_args: str) -> str:
     return ref
 
 
+def corpus(pattern: str) -> list[Path]:
+    files = sorted(p for src in private_sources() if src.resolve() != BENCH.resolve() for p in src.glob(pattern))
+    if not files:
+        raise SystemExit("no private corpus in testdata/private: run scripts/link-private-testdata.sh <dir>")
+    return files
+
+
 def corpus_stickers(rnd: random.Random, n: int, exclude: set[str]) -> list[Path]:
-    root = ROOT / "testdata" / "private" / "GuidedSticker-Project-TestData-Consolidated"
-    files = sorted(p for p in root.glob("*/*.webp") if f"{p.parent.name}/{p.name}" not in exclude)
+    files = [p for p in corpus("*/*.webp") if f"{p.parent.name}/{p.name}" not in exclude]
     rnd.shuffle(files)
     picked, packs = [], set()
     for p in files:
@@ -63,8 +71,7 @@ def corpus_stickers(rnd: random.Random, n: int, exclude: set[str]) -> list[Path]
 
 
 def corpus_video(rnd: random.Random, exclude: set[str]) -> Path:
-    root = ROOT / "testdata" / "private" / "GuidedSticker-Project-TestData-Consolidated"
-    files = sorted(p for p in root.glob("*/*.webm") if f"{p.parent.name}/{p.name}" not in exclude and p.stat().st_size <= 256 * 1024)
+    files = [p for p in corpus("*/*.webm") if f"{p.parent.name}/{p.name}" not in exclude and p.stat().st_size <= 256 * 1024]
     rnd.shuffle(files)
     for p in files:
         info = json.loads(subprocess.run([SB, "analyze", str(p), "--json"], capture_output=True, text=True).stdout)
