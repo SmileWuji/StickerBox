@@ -209,7 +209,7 @@ skills are smoke-tested with Sonnet only. Dataset names never appear in the repo
 names live in the git-ignored `testdata/private/CODENAMES.txt`.
 
 Finished 2026-11-09: every step below is done. The Qwen runs needed Ollama started with
-`OLLAMA_MODELS=../OCR-Benchmark/.ollama-models ollama serve`; every model call
+`OLLAMA_MODELS=../OCR-Benchmark/.ollama-models ollama serve` (run from this repo); every model call
 is cached in `testdata/private/bench/qwen/cache.jsonl`, so `scripts/bench_skills/qwen.py score`
 reproduces each number without the GPU. Run long Qwen jobs from one sequential script, never with
 `pgrep` waits on each other, and not while several Sonnet agents run (the host swaps).
