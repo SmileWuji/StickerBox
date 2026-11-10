@@ -30,6 +30,7 @@ import numpy as np  # noqa: E402
 
 import factory  # noqa: E402
 from sticker_box import db  # noqa: E402
+from sticker_box.features import EXTRACTOR  # noqa: E402
 from sticker_box.cli import main  # noqa: E402
 
 HANZI = ("的一是不了人我在有他这中大来上个国到说们为子和你地出道也时年得就那要下以生会自着去之过家学对可她里后小么心多天而能好都"
@@ -82,7 +83,7 @@ def fill(root: Path, preset: str, n: int, seed: int) -> dict:
         chosen = set()
         if preset == "gallery":
             chosen |= {zipf(rng, vocab["tag"])[0] for _ in range(rng.randint(1, 5))}
-            features.append((sha, 0, "sift-v1", 300, nrng.random((300, 2), dtype=np.float32).tobytes(),
+            features.append((sha, 0, EXTRACTOR, 300, nrng.random((300, 2), dtype=np.float32).tobytes(),
                              nrng.integers(0, 256, (300, 128), dtype=np.uint8).tobytes()))
         else:
             for category, lo, hi in (("emotion", 1, 2), ("visual", 1, 3), ("character", 0, 1), ("series", 0, 1), ("pack", 1, 1)):
@@ -100,11 +101,13 @@ def fill(root: Path, preset: str, n: int, seed: int) -> dict:
     return {"shas": shas, "popular": first, "text_word": next(t for t in texts if t)[:2]}
 
 
-def run_cli(*argv: str) -> tuple[int, str]:
+def run_cli(*argv: str, allowed: tuple[int, ...] = (0,)) -> tuple[int, str]:
+    """Fails on any exit code not allowed, so a refused command is never timed as a working one.
+    `check` exits 1 when it finds problems, which the synthetic boxes have by design."""
     out = io.StringIO()
     with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
         code = main(["--json", *argv])
-    if code not in (0, 1):
+    if code not in allowed:
         raise RuntimeError(f"{argv[:3]} exited {code}: {out.getvalue()[:300]}")
     return code, out.getvalue()
 
@@ -125,15 +128,17 @@ def timed(fn, repeat: int = REPEAT) -> dict:
     return stats(times)
 
 
-def as_process(argv: list[str]) -> dict:
+def as_process(argv: list[str], allowed: tuple[int, ...] = (0,)) -> dict:
     """Wall time and peak memory of one command run as its own process, as an agent runs it. Peak
     memory is VmHWM, which starts afresh at exec; getrusage's maxrss would carry over the forking
     parent's peak on Linux."""
     code = ("import sys; from sticker_box.cli import main; c = main(sys.argv[1:]); "
-            "print(next(l.split()[1] for l in open('/proc/self/status') if l.startswith('VmHWM')), file=sys.stderr)")
+            "print(next(l.split()[1] for l in open('/proc/self/status') if l.startswith('VmHWM')), file=sys.stderr); sys.exit(c)")
     t0 = time.perf_counter()
     done = subprocess.run([sys.executable, "-c", code, "--json", *argv], capture_output=True, text=True)
     wall = time.perf_counter() - t0
+    if done.returncode not in allowed:
+        raise RuntimeError(f"{argv[:3]} exited {done.returncode}: {done.stdout[:300]}")
     rss_kb = int(done.stderr.strip().splitlines()[-1]) if done.stderr.strip().splitlines()[-1].isdigit() else None
     return {"wall_ms": round(wall * 1000, 1), "peak_rss_mb": round(rss_kb / 1024, 1) if rss_kb else None}
 
@@ -157,7 +162,7 @@ PLANS = {
     "write: usage for limits": "SELECT COUNT(*) AS n, COALESCE(SUM(bytes), 0) AS b FROM item",
     "show: relations of an item": "SELECT * FROM relation WHERE a = 'x' OR b = 'x'",
     "readme: uses per tag": "SELECT t.id, (SELECT COUNT(*) FROM item_tag it WHERE it.tag_id = t.id) FROM tag t WHERE t.category = 'emotion'",
-    "sift: stored descriptors": "SELECT sha256, frame, n, desc FROM feature WHERE extractor = 'sift-v1' ORDER BY rowid",
+    "sift: stored descriptors": f"SELECT sha256, frame, n, desc FROM feature WHERE extractor = '{EXTRACTOR}' ORDER BY rowid",
 }
 
 
@@ -231,7 +236,7 @@ def bench_box(where: Path, preset: str, n: int, repeat: int, deep: bool) -> dict
     slow = max(3, repeat // 2)
     ops["vocab review"] = timed(lambda i: run_cli("vocab", "review", *box), slow)
     ops["dupes"] = timed(lambda i: run_cli("dupes", *box), slow)
-    ops["check"] = timed(lambda i: run_cli("check", *box), slow)
+    ops["check"] = timed(lambda i: run_cli("check", *box, allowed=(0, 1)), slow)
     ops["clean (nothing to do)"] = timed(lambda i: run_cli("clean", *box), slow)
     tag_cat = "emotion" if preset == "telegram-sticker" else "tag"
     a, b = fill_vocab(root, tag_cat)[:2]
@@ -250,7 +255,7 @@ def bench_box(where: Path, preset: str, n: int, repeat: int, deep: bool) -> dict
         "stage": as_process(["stage", str(new_sticker(tmp, n * 10 + 998)), *box]),
         "commit": as_process(["commit", staged, *box, *commit_args(preset, info["popular"])]),
         "remove": as_process(["remove", staged, *box]),
-        "check": as_process(["check", *box]),
+        "check": as_process(["check", *box], allowed=(0, 1)),
     }
     report = {"preset": preset, "items": n, "fill_s": round(fill_s, 1), "db_mb": round((root / "box.sqlite3").stat().st_size / 1e6, 1),
               "ops": ops, "as_process": process, "plans": plans(root)}

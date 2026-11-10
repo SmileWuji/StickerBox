@@ -106,7 +106,7 @@ background digits or a lone letter as text.
 |---|---|---|---|---|---|
 | v4 at 512 px | 0.897 | 0.6 | 0.147 | 0.737 | 1.1 s |
 | v4 at 1024 px | 0.923 | 0.8 | 0.145 | 0.724 | 2.1 s |
-| v7 = v4 + "check the edges and corners" (n=82) | 0.897 | 0.6 | | | 1.0 s |
+| v7 = v4 + "check the edges and corners" (n=75) | 0.893 | 0.6 | | | 1.0 s |
 | v8 = v4 + rules for vertical text, readable sound effects, logos and print, partly legible watermarks | 0.910 | 0.5 | 0.136 | 0.737 | 1.1 s |
 
 Small faint watermarks are an operating-point problem, not a wording one: showing Qwen the
@@ -299,6 +299,9 @@ Fixes from these runs:
 
 - n is small: 78 human-labelled dev stickers for has-text, 26 independently checked stickers.
   Differences of one or two stickers are within noise.
+- The first scoring put a few stickers twice into a split, or into both splits, when they had
+  both a human label and a sample row. Fixed in review (one row per sticker, the sample's split);
+  re-scoring from the cache changed no reported number except the partial v7 run.
 - The 26 checked stickers were also used for the Sonnet wording check in section 7 after the
   emotion wording was chosen on dev; they were not used to choose anything.
 - The independent check was done by reviewing Sonnet's labels, not blind; it is lenient.

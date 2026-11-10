@@ -17,6 +17,10 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))
+
+from sticker_box import presets, rules  # noqa: E402
+
 BENCH = ROOT / "testdata" / "private" / "bench"
 OUT = BENCH / "smoke"
 SB = str(Path(sys.executable).with_name("sticker-box"))
@@ -65,7 +69,7 @@ def corpus_video(rnd: random.Random, exclude: set[str]) -> Path:
     for p in files:
         info = json.loads(subprocess.run([SB, "analyze", str(p), "--json"], capture_output=True, text=True).stdout)
         media = info["files"][0]["media"]
-        if media.get("duration_ms", 9999) <= 3000 and not media.get("audio"):
+        if not rules.check_file(presets.get("telegram-sticker")["policy"]["files"], media):
             return p
     raise SystemExit("no conforming video sticker found")
 

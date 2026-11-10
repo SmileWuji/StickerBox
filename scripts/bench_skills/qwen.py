@@ -56,28 +56,42 @@ def load_reference() -> dict[str, dict]:
 
 
 def inputs(skill: str, split: str) -> list[dict]:
+    """One row per sticker. A sticker in the benchmark sample keeps the sample's split, so a
+    human label never puts it on the other side of dev and test; human labels win over the
+    reference where both exist."""
     data = json.loads((BENCH / "sample.json").read_text())
     ref = load_reference()
-    out = []
+    sample_split = {row["id"]: row["split"] for row in data["sample"]}
+
+    def split_for(key: str) -> str:
+        return sample_split.get(key) or split_of(key)
+
+    out: dict[str, dict] = {}
     if skill == "tag-text":
-        for row in data["human"]["has_text"]:
-            if split_of(row["id"]) == split:
-                out.append({"id": row["id"], "path": row["path"], "gold": {"has_text": row["has_text"], "watermark": row["watermark"]}, "source": "human"})
         human_text = {row["id"]: row["text"] for row in data["human"]["transcribe"]}
+        for row in data["human"]["has_text"]:
+            if split_for(row["id"]) == split:
+                out[row["id"]] = {"id": row["id"], "path": row["path"], "gold": {"has_text": row["has_text"], "watermark": row["watermark"]}, "source": "human"}
         for row in data["human"]["transcribe"]:
-            if split_of(row["id"]) == split and row["id"] not in {o["id"] for o in out}:
-                out.append({"id": row["id"], "path": row["path"], "gold": {"has_text": True}, "source": "human"})
-        for o in out:
-            if o["id"] in human_text:
-                o["gold"]["text"] = human_text[o["id"]]
+            if split_for(row["id"]) == split and row["id"] not in out:
+                out[row["id"]] = {"id": row["id"], "path": row["path"], "gold": {"has_text": True}, "source": "human"}
+        for key, o in out.items():
+            if key in human_text:
+                o["gold"]["text"] = human_text[key]
     for row in data["sample"]:
         if row["split"] != split or row["id"] not in ref:
             continue
         r = ref[row["id"]]
+        if row["id"] in out:
+            o = out[row["id"]]
+            if o["gold"]["has_text"] and r.get("text"):
+                o["gold"].setdefault("text", r["text"])
+            o["context_text"] = r.get("text") or ""
+            continue
         gold = {"has_text": r.get("has_text"), "text": r.get("text"), "tags": r.get("tags", []), "checked": r.get("checked", False)}
-        out.append({"id": row["id"], "path": row["path"], "gold": gold, "source": "checked" if gold["checked"] else "sonnet",
-                    "context_text": r.get("text") or ""})
-    return out
+        out[row["id"]] = {"id": row["id"], "path": row["path"], "gold": gold, "source": "checked" if gold["checked"] else "sonnet",
+                          "context_text": r.get("text") or ""}
+    return list(out.values())
 
 
 def spec(variant: str) -> tuple[str, int]:
@@ -251,6 +265,7 @@ def score(skill: str, variant: str, split: str, repeat: str = "a") -> dict:
         human = [(i, r) for i, r in rows if i["source"] == "human"]
         ok = [(i, r) for i, r in human if r["answer"] is not None and "has_text" in r["answer"]]
         out["has_text_acc_human"] = round(sum(bool(r["answer"]["has_text"]) == i["gold"]["has_text"] for i, r in ok) / max(1, len(human)), 3)
+        # The gold set defines a watermark as a pack's @handle, so finding it means reading the @.
         wm = [(i, r) for i, r in ok if i["gold"].get("watermark")]
         out["watermark_recall"] = round(sum(bool(r["answer"].get("has_text")) and "@" in (r["answer"].get("text") or "") for i, r in wm) / max(1, len(wm)), 3) if wm else None
         texted = [(i, r) for i, r in rows if i["gold"].get("text")]

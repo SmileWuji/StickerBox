@@ -105,7 +105,10 @@ Median times in milliseconds inside one Python process, for a sticker box of eac
   108 ms, `search --tag` 128 ms, `stage` 698 ms (mostly loading the OCR model), `commit` 380 ms.
   Python start-up alone is about 70 ms.
 - Gallery inserts are the slow path: SIFT matching runs at `stage` and again at `commit`,
-  about 1.6 s each with 3,000 images stored and 3.5 s each with 10,000.
+  about 1.6 s each with 3,000 images stored and 3.5 s each with 10,000. The synthetic features
+  never resemble each other, so this is the vote over every stored image without the closer
+  check of likely matches; a gallery of look-alike images pays that check on top, up to the
+  `STICKER_BOX_SIFT_SECONDS` cap.
 - `box.sqlite3` takes about 2 MB per 1,000 stickers, and about 43 MB per 1,000 gallery images
   (the SIFT features).
 - One, two and four agents adding stickers to one box at the same time all finished without a

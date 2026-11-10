@@ -19,7 +19,9 @@ not reachable, so production numbers are still missing.
 - **`stage` + `commit` under 1 s for stickers: met**, even with the OCR hint (175 + 75 ms at
   10k in-process; 698 + 380 ms as separate processes, where loading the OCR model dominates).
 - **Gallery inserts are the slow path:** SIFT matching runs at `stage` and again at `commit`,
-  about 1.6 s each at 3k and 3.5 s each at 10k, as the SIFT note predicted. Accepted.
+  about 1.6 s each at 3k and 3.5 s each at 10k, as the SIFT note predicted. Accepted. The
+  synthetic descriptors are random, so no candidate passes the vote: these times leave out the
+  ratio test and RANSAC that real look-alike images add per shortlisted candidate.
 - **Process start-up was the real miss** and is fixed (below).
 - **Concurrent writers:** 1, 2 and 4 writers all completed with no failures.
 - **The 9p NTFS mount is slower, up to 10 times for lookups** (about 1.6 times for `stage`), and
