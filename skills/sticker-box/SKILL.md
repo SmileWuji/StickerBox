@@ -67,6 +67,7 @@ With `--json`:
 ```
 sticker-box search 无语 嫌弃 --json            # any of the words; best first
 sticker-box search --tag emotion=开心 --json   # only images with that tag
+sticker-box search --tag emotion=开心 --random --limit 2 --json   # two of them, not always the same two
 sticker-box show <ref> --json                  # everything about one image
 ```
 

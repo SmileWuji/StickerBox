@@ -172,5 +172,7 @@ def test_11_decoder_errors_become_box_errors_and_leave_nothing(gallery, run_cli,
 
 
 def test_12_query_size_is_capped(gallery, run_cli):
-    out = run_cli("search", *[f"w{i}" for i in range(17)], "--box", str(gallery), expect=1)
-    assert out["error"] == "usage"
+    out = run_cli("search", *[f"w{i}" for i in range(17)], "x" * 100, "--box", str(gallery))
+    assert out["query"].endswith("x" * 100) and "first 16 words" in out["warnings"][0]
+    out = run_cli("search", f"--query={'猫' * 200}", "--box", str(gallery))
+    assert "cut to 64 characters" in out["warnings"][0]

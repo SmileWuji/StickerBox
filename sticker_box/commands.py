@@ -335,7 +335,17 @@ def cmd_search(args) -> dict:
     from . import search
 
     animated = True if args.animated else False if args.static else None
-    result = search.search(open_box(args), " ".join(args.query), args.tag or [], args.category, animated, args.license, args.limit)
+    query = " ".join([*args.query, *([args.query_text] if args.query_text else [])])
+    if args.seed is not None and not args.random:
+        from .errors import EXIT_USAGE
+
+        raise BoxError("usage", "--seed only applies with --random", exit_code=EXIT_USAGE)
+    shuffle = None
+    if args.random:
+        import random
+
+        shuffle = random.Random(args.seed)
+    result = search.search(open_box(args), query, args.tag or [], args.category, animated, args.license, args.limit, shuffle)
     result["_text"] = search.as_text(result)
     return result
 
@@ -491,6 +501,7 @@ def register(sub: argparse._SubParsersAction, common: argparse.ArgumentParser) -
 
     p = add("search", cmd_search, "find items by tags, aliases, tag definitions, on-image text, notes and descriptions")
     p.add_argument("query", nargs="*", help="words, matched literally; any of them may match (category=value matches one tag); with no words, newest first")
+    p.add_argument("--query", dest="query_text", metavar="TEXT", help="more words as one value; write --query=TEXT when the text may start with '-'")
     p.add_argument("--tag", action="append", metavar="CATEGORY=VALUE", help="only items with this tag")
     p.add_argument("--category", help="only items with a tag in this category")
     kind = p.add_mutually_exclusive_group()
@@ -498,6 +509,8 @@ def register(sub: argparse._SubParsersAction, common: argparse.ArgumentParser) -
     kind.add_argument("--static", action="store_true")
     p.add_argument("--license", help="only items whose licence contains this")
     p.add_argument("--limit", type=int, default=10)
+    p.add_argument("--random", action="store_true", help="items of equal score in random order instead of newest first")
+    p.add_argument("--seed", type=int, help="with --random, the same seed gives the same order")
 
     p = add("dupes", cmd_dupes, "groups of duplicates, crops, rotations and frames, each with a suggested keeper")
     p.add_argument("--kind", action="append", help="only these relation kinds (near_duplicate, duplicate, crop_of, contains, rotation, overlap, frame_of, has_frame, shares_frames)")

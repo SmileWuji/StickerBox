@@ -113,3 +113,31 @@ def test_empty_text_stays_empty_and_definitions_are_searched(tagged):
     results = {r["ref"]: r for r in cli("search", "--box", str(root), "--limit", "20")["results"]}
     assert results[refs[1]]["text"] == ""
     assert 3 in top(tagged, "鄙视") and 1 in top(tagged, "说不出话")
+
+
+def test_query_option_takes_text_starting_with_a_dash(tagged):
+    root, refs, cli = tagged
+    result = cli("search", "--query=-_-", "--box", str(root))
+    assert result["query"] == "-_-"
+    assert top(tagged, "--query=-_- 卖惨") == [4]
+    assert top(tagged, "无语", "--query=托腮")[0] == 2
+
+
+def test_seed_needs_random(tagged):
+    root, refs, cli = tagged
+    from sticker_box.cli import main
+
+    assert main(["--json", "search", "--seed", "3", "--box", str(root)]) == 2
+
+
+def test_random_shuffles_only_equal_scores(tagged):
+    root, refs, cli = tagged
+    newest = top(tagged, "--tag", "emotion=开心", n=10)
+    orders = {tuple(top(tagged, n=12, extra=("--random", "--seed", str(seed)))) for seed in range(8)}
+    assert len(orders) > 1
+    assert all(sorted(order) == sorted(refs) for order in orders)
+    assert top(tagged, n=12, extra=("--random", "--seed", "3")) == top(tagged, n=12, extra=("--random", "--seed", "3"))
+    assert sorted(newest) == [5, 9]
+    for seed in range(8):
+        ranked = top(tagged, "无语", "托腮", n=3, extra=("--random", "--seed", str(seed)))
+        assert ranked[0] == 2 and set(ranked[1:]) == {1, 12}

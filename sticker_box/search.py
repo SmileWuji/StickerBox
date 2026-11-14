@@ -3,6 +3,8 @@ fields. Each term scores an item by its best match; an item's score is the sum o
 items matching more terms rank first, then newer ones. `LIKE` handles short Chinese terms that a
 trigram index could not."""
 
+import random
+
 from . import clock, paths, vocab
 from .errors import BoxError
 
@@ -96,12 +98,15 @@ def _term_hits(conn, term: str) -> dict[str, tuple[int, str]]:
 
 
 def search(box, query: str, tags: list[str] = (), category: str | None = None, animated: bool | None = None,
-           license: str | None = None, limit: int = 10) -> dict:
+           license: str | None = None, limit: int = 10, shuffle: random.Random | None = None) -> dict:
+    """With `shuffle`, items of equal score come in random order instead of newest first."""
     conn = box.conn
     policy = box.policy()
     terms = terms_of(query)
+    warnings = []
     if len(terms) > MAX_TERMS or any(len(t) > MAX_TERM for t in terms):
-        raise BoxError("usage", f"a query has at most {MAX_TERMS} words of at most {MAX_TERM} characters each")
+        terms = [t[:MAX_TERM] for t in terms[:MAX_TERMS]]
+        warnings.append(f"only the first {MAX_TERMS} words were searched, each cut to {MAX_TERM} characters")
     if len(tags) > MAX_TERMS:
         raise BoxError("usage", f"at most {MAX_TERMS} --tag filters")
     if limit < 1 or limit > 500:
@@ -135,7 +140,11 @@ def search(box, query: str, tags: list[str] = (), category: str | None = None, a
                 matched.setdefault(sha, []).append(f"{term}: {why}")
     if not terms:
         scores = {sha: 0 for sha in allowed}
-    ranked = sorted(scores, key=lambda sha: (scores[sha], allowed[sha], sha), reverse=True)
+    if shuffle is None:
+        ranked = sorted(scores, key=lambda sha: (scores[sha], allowed[sha], sha), reverse=True)
+    else:
+        draw = {sha: shuffle.random() for sha in sorted(scores)}
+        ranked = sorted(scores, key=lambda sha: (scores[sha], draw[sha]), reverse=True)
     now = clock.stamp()
     results = []
     for sha in ranked[:limit]:
@@ -156,7 +165,7 @@ def search(box, query: str, tags: list[str] = (), category: str | None = None, a
             "description": (row["description"] or "")[:SNIPPET] or None,
             "expired": bool(row["expires_at"]) and row["expires_at"] <= now,
         })
-    return {"query": query, "total": len(ranked), "results": results}
+    return {"query": query, "total": len(ranked), "results": results, **({"warnings": warnings} if warnings else {})}
 
 
 def as_text(result: dict) -> str:
