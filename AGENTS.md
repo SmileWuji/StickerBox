@@ -283,7 +283,7 @@ it: the "pack aliases dropped" report is not a bug (the bot's `vocab_log` never 
 - [x] 7 `contrib/convert/`: the conversion script in English with a README; linked from the README and the integration notes
 - [x] 8 `contrib/import-library.md`: the recipe for moving an existing image library into boxes
 - [x] 9 `tag-character-series`: comparing against reference pictures, `compare.sh`, safebooru among the sources and in the description; `skills/safebooru/` with `booru.py`
-- [ ] 10 `merge` reports aliases dropped at the 32-alias cap
+- [x] 10 `merge` reports aliases dropped at the 32-alias cap
 - [ ] 11 Version 0.2.0; README, owner section and decisions updated
 
 ## 1. Scope

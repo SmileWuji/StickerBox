@@ -171,3 +171,22 @@ def test_name_flag_is_validated_and_old_policies_still_load(sbox, run_cli, tmp_p
         conn.execute("UPDATE policy_rule SET params = ? WHERE name = 'categories'", ('{"emotion": {"description": "", "multiple": true, "required": true}, "pack": {"description": "", "multiple": true, "required": false}}',))
     out = add_sticker(run_cli, sbox, tmp_path, 32, "--define", "emotion=开心", "高兴", "--define", "pack=MokaPackX", "a pack")
     assert any("pack=MokaPackX" in w for w in out["warnings"])
+
+
+def test_merge_reports_aliases_dropped_at_the_cap(sbox, run_cli):
+    box = ["--box", str(sbox)]
+    run_cli("tag", "new", "emotion", "开心", "--means", "高兴", *box)
+    run_cli("tag", "new", "emotion", "快乐", "--means", "高兴", *box)
+    for i in range(20):
+        run_cli("tag", "alias", "emotion", "开心", f"开心{i}", *box)
+        run_cli("tag", "alias", "emotion", "快乐", f"快乐{i}", *box)
+    out = run_cli("tag", "merge", "emotion", "快乐", "开心", *box)
+    kept = [t for t in run_cli("tag", "list", "--category", "emotion", *box)["tags"] if t["value"] == "开心"][0]["aliases"]
+    assert len(kept) == 32 and "快乐" in kept
+    assert len(out["aliases_dropped"]) == 41 - 32
+    assert not set(out["aliases_dropped"]) & set(kept)
+    assert "dropped" in out["message"]
+    small = run_cli("tag", "new", "emotion", "难过", "--means", "伤心", *box)
+    assert small
+    run_cli("tag", "new", "emotion", "伤心", "--means", "伤心", *box)
+    assert run_cli("tag", "merge", "emotion", "伤心", "难过", *box)["aliases_dropped"] == []

@@ -340,10 +340,15 @@ def merge(conn, category, source, target) -> dict:
     conn.execute("INSERT OR IGNORE INTO tag_alias (tag_id, category, alias) VALUES (?, ?, ?)", (dst["id"], category, source))
     if not dst["definition"] and src["definition"]:
         conn.execute("UPDATE tag SET definition = ? WHERE id = ?", (src["definition"], dst["id"]))
-    log(conn, "merge", {"category": category, "from": source, "into": target, "items": moved})
+    dropped = [r["alias"] for r in extra]
+    log(conn, "merge", {"category": category, "from": source, "into": target, "items": moved,
+                        **({"aliases_dropped": dropped} if dropped else {})})
+    message = f"{had} item(s) lost {category}={source}; {moved} gained {category}={target}, {had - moved} already had it"
+    if dropped:
+        message += (f". A tag keeps at most {MAX_ALIASES} aliases, so these were dropped: {', '.join(dropped)}; "
+                    "re-add any that matter as aliases of another tag")
     return {"tag": f"{category}={target}", "merged": f"{category}={source}", "items_retagged": moved,
-            "items_already_tagged": had - moved, "alias_kept": source,
-            "message": f"{had} item(s) lost {category}={source}; {moved} gained {category}={target}, {had - moved} already had it"}
+            "items_already_tagged": had - moved, "alias_kept": source, "aliases_dropped": dropped, "message": message}
 
 
 def retire(conn, category, value, restore: bool = False) -> dict:
