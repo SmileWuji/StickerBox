@@ -126,3 +126,23 @@ def test_a_stored_on_duplicate_mode_from_before_report_only_is_ignored(tmp_path,
     assert "on_duplicate" not in run_cli("policy", "show", "--box", str(root))["policy"]["duplicates"]
     run_cli("policy", "set", "duplicates", json.dumps(params), "--box", str(root))
     run_cli("info", "--box", str(root))
+
+
+def test_a_read_only_reader_can_open_the_box(tmp_path, run_cli):
+    import sqlite3
+
+    root = tmp_path / "s"
+    run_cli("init", str(root), "--preset", "telegram-sticker", "--language", "zh-Hans")
+    run_cli("tag", "new", "emotion", "开心", "--means", "高兴", "--box", str(root))
+    assert sorted(p.name for p in root.iterdir() if p.name.startswith("box.sqlite3")) == ["box.sqlite3"]
+    db = root / "box.sqlite3"
+    try:
+        db.chmod(0o444)
+        root.chmod(0o555)
+        conn = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+        assert conn.execute("PRAGMA journal_mode").fetchone()[0] == "delete"
+        assert conn.execute("SELECT value FROM tag").fetchall() == [("开心",)]
+        conn.close()
+    finally:
+        root.chmod(0o755)
+        db.chmod(0o644)

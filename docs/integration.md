@@ -97,6 +97,70 @@ images, and may carry injected instructions. Pass chat text as `--query=<text>`,
 argument with the `=`, so words such as `-_-` are not read as options. Add `--random` to vary
 which of equally good matches come back.
 
+## Wrapping it as a tool
+
+An agent without a shell needs the CLI as one tool. QQBot's plugin wraps it this way; what it
+checks is listed here so any host can do the same.
+
+**The call.** The tool takes `{box, args}`: a box name from a fixed list, and the command line
+after `sticker-box` as a list of strings. Run the binary directly, never through a shell, with
+standard input closed, and append `--json`. Cap the output you read (512 KB is plenty) and kill
+the process on a timeout (180 s covers `stage` of a large animation). A kill leaves at most an
+orphan file, which `check` reports; a commit is one transaction. Return the exit code with the
+parsed output.
+
+**The environment.** Pass only `PATH`, `HOME`, `LANG` (a UTF-8 locale), `STICKER_BOX_JSON=1`,
+`STICKER_BOX_DIR` for the chosen box, and any `STICKER_BOX_*` limits you set. Never pass the
+agent's own environment: that is where API keys live, and the tool needs none.
+
+**Arguments to refuse or rewrite.** Long options must be written in full, so exact names are
+enough.
+
+| argument | what to do |
+|---|---|
+| `init` | refuse; the host creates the boxes and sets their policy |
+| `--box`, `--box=...` | refuse; the `box` parameter chooses the box |
+| `--from <name>`, `--from=<name>` | accept only a box name from your list, and rewrite it to that box's directory |
+| `--` | refuse; it turns every later option into a path |
+| `--stdin` | refuse; with standard input closed, `notes set --stdin` would replace the notes with nothing. The agent passes the text as one argument instead: `notes set "<text>"`, `policy set <rule> '<json>'` |
+
+**Commands that read files.** Only `stage`, `frames` and `analyze` take file paths from the
+caller (`init` takes a directory and `--from` a box, both handled above). For these three:
+
+- resolve every positional argument with realpath and accept it only under an allowlist of read
+  roots, such as the chat's media folder and the boxes;
+- accept a reference (`^[0-9a-f]{8,64}$`) instead of a path as the argument of `frames`, and for
+  `stage` with `--from`;
+- accept only these options, and refuse any other:
+
+| command | options with a value | flags |
+|---|---|---|
+| `stage` | `--from`, `--license`, `--source` | `--auto-cleanup` |
+| `frames` | none | none |
+| `analyze` | none | `--ocr` |
+
+`--json` and `--help` are accepted everywhere. The table is complete for 0.2.0; after an
+upgrade, check it against each command's `--help` and add any new command that reads files.
+
+**Free text.** Pass chat text to `search` as `--query=<text>`, one argument with the `=`, so a
+word such as `-_-` is not read as an option.
+
+**Credit set by the host.** When the agent stages a picture that the host knows came from a
+chat, the host adds `--source <who sent it>` after the agent's arguments. The last `--source`
+wins, so the agent can neither leave the credit out nor forge it.
+
+**Read-only readers.** The box keeps SQLite's rollback journal, not WAL, so another process can
+open `box.sqlite3` read-only, for example `sqlite3 -readonly` in a sandbox that sees the boxes on
+a read-only bind mount. This is supported and pinned by a test; moving to WAL would break it. Two
+limits: after a writer was killed mid-transaction, a read-only reader cannot open the box until a
+writer has rolled the journal back (any `sticker-box` command on the box does); and the schema
+belongs to the tool, so check `.schema` after an upgrade. Changes still go through the tool.
+
+**Contact sheets for every animation.** For each animated image that arrives in chat, the host
+can run `sticker-box clean`, then `sticker-box frames <file>`, on a `buffer` box, and hand the
+sheet's path to the agent next to the attachment. A model without video input then sees the
+animation with no extra step. Running `clean` first keeps the buffer under its limit.
+
 ## Security notes
 
 - Everything a box returns (its `README.md`, notes, tag values and definitions, on-image text,

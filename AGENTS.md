@@ -278,7 +278,7 @@ it: the "pack aliases dropped" report is not a bug (the bot's `vocab_log` never 
 - [x] 2 `search --query=<text>` for free text starting with `-`; `search --random [--seed N]` shuffles equal scores
 - [x] 3 `names` flag per category skips the script check; set on `pack` in the `telegram-sticker` preset
 - [x] 4 Move to `rapidocr` 3.x (headless OpenCV, any Python 3.12+); OCR hint re-measured on the corpus in a dated note; a clear error when `cv2` cannot load; install docs
-- [ ] 5 `docs/integration.md`: "Wrapping it as a tool"; the rollback journal pinned by a test
+- [x] 5 `docs/integration.md`: "Wrapping it as a tool"; the rollback journal pinned by a test
 - [ ] 6 Search: chat phrases match text, description and note by shared CJK bigrams; tuned on the benchmark box, numbers in a dated note
 - [ ] 7 `contrib/convert/`: the conversion script in English with a README; linked from the README and the integration notes
 - [ ] 8 `contrib/import-library.md`: the recipe for moving an existing image library into boxes
