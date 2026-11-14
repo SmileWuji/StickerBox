@@ -267,6 +267,25 @@ reproduces each number without the GPU. Run long Qwen jobs from one sequential s
       the tests (238, 3 private ones skipped) and `scripts/smoke.sh`; the notes no longer point at the owner's
       sibling directories, and `smoke_fixtures.py` reads whatever corpora are linked instead of a fixed folder
 
+### First consumer's feedback (started 2026-11-14)
+
+QQBot ran 0.1.0 at `8307df4` from 2026-11-10 and sent a handoff. The owner chose: move to
+`rapidocr` 3.x now rather than cap Python; the `names` flag on `pack` only; the reference-picture
+method, `compare.sh` and the safebooru helper upstream as the bot has them. Checked while reading
+it: the "pack aliases dropped" report is not a bug (the bot's `vocab_log` never had those aliases).
+
+- [ ] 1 No option abbreviations (`allow_abbrev=False`), so a wrapper can filter options by exact name
+- [ ] 2 `search --query=<text>` for free text starting with `-`; `search --random [--seed N]` shuffles equal scores
+- [ ] 3 `names` flag per category skips the script check; set on `pack` in the `telegram-sticker` preset
+- [ ] 4 Move to `rapidocr` 3.x (headless OpenCV, any Python 3.12+); OCR hint re-measured on the corpus in a dated note; a clear error when `cv2` cannot load; install docs
+- [ ] 5 `docs/integration.md`: "Wrapping it as a tool"; the rollback journal pinned by a test
+- [ ] 6 Search: chat phrases match text, description and note by shared CJK bigrams; tuned on the benchmark box, numbers in a dated note
+- [ ] 7 `contrib/convert/`: the conversion script in English with a README; linked from the README and the integration notes
+- [ ] 8 `contrib/import-library.md`: the recipe for moving an existing image library into boxes
+- [ ] 9 `tag-character-series`: comparing against reference pictures, `compare.sh`, safebooru among the sources and in the description; `skills/safebooru/` with `booru.py`
+- [ ] 10 `merge` reports aliases dropped at the 32-alias cap
+- [ ] 11 Version 0.2.0; README, owner section and decisions updated
+
 ## 1. Scope
 
 In:
