@@ -35,7 +35,7 @@ Exit 0:
       },
       "keyframes": 1,
       "ocr_hint": {
-        "text": "OK!",
+        "text": "OKI",
         "noise": true,
         "engine": "rapidocr"
       },
@@ -149,7 +149,7 @@ Exit 0:
       },
       "keyframes": 1,
       "ocr_hint": {
-        "text": "88",
+        "text": "8",
         "noise": true,
         "engine": "rapidocr"
       },
@@ -232,7 +232,7 @@ Exit 0:
       },
       "keyframes": 9,
       "ocr_hint": {
-        "text": "HU!",
+        "text": "C HI!",
         "noise": true,
         "engine": "rapidocr"
       },

@@ -47,8 +47,8 @@ Verified after installing `vpx-tools`, jq and ImageMagick: every `contrib/conver
 animated WEBP and WEBM in; WEBM, GIF and PNG out; crop, start, speed) passes `stage` in a strict
 `telegram-sticker` box, and `compare.sh` builds its sheet from safebooru. Its hint for a wrong
 tag was useless (it offered the misspelling itself), so it now searches character tags by each
-word of the name. Not done: the skill examples' transcripts still show 0.1.0's OCR hints (the
-test does not compare answers); DeepSeek is still not benchmarked.
+word of the name. The skill examples were rebuilt with 0.2.0. Not done: DeepSeek is still not
+benchmarked.
 
 State on 2026-11-09 (evening): M0 to M8 and the backlog are done. 223 tests and
 `scripts/smoke.sh` pass. Read in this order:

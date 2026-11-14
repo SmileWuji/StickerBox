@@ -45,7 +45,7 @@ The tool enforces these when an image is added or changed.
 - `character` (optional, one or more values): Who is pictured, named after the box's reference sources.
 - `series` (optional, one or more values): The work or franchise the character comes from.
 - `visual` (optional, one or more values): What is shown: actions, objects, poses, notable details.
-- `pack` (optional, one or more values): A collection the sticker belongs to; a pack is a tag.
+- `pack` (optional, one or more values, proper names in any script): A collection the sticker belongs to; a pack is a tag.
 - Vocabulary is open: a new tag may be created while adding an image, and must come with a definition. Reuse existing tags whenever one fits.
 
 ### Duplicates

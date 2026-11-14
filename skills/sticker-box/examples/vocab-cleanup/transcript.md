@@ -71,6 +71,7 @@ Exit 0:
   "items_retagged": 1,
   "items_already_tagged": 0,
   "alias_kept": "无语了",
+  "aliases_dropped": [],
   "message": "1 item(s) lost emotion=无语了; 1 gained emotion=无语, 0 already had it"
 }
 ```
@@ -90,6 +91,7 @@ Exit 0:
   "items_retagged": 1,
   "items_already_tagged": 0,
   "alias_kept": "高兴",
+  "aliases_dropped": [],
   "message": "1 item(s) lost emotion=高兴; 1 gained emotion=开心, 0 already had it"
 }
 ```
