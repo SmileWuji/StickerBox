@@ -139,12 +139,14 @@ How well a model tags stickers by following `skills/`, on 264 stickers from a pr
 - `docs/integration.md`: install, calling conventions, exit codes, environment, security notes.
 - `docs/example-policies.md`: a meme library, capped gallery, day-long buffer, stricter metadata.
 - `skills/`: instructions for agents, for using the tool and for tagging.
+- `contrib/convert/`: a script that converts images to the Telegram sticker spec, for files
+  `stage` refuses (the tool itself never converts).
 
 ## Development
 
 ```bash
 python3 -m venv --system-site-packages ~/.venvs/sticker-box   # on an NTFS mount, keep the venv off it
-~/.venvs/sticker-box/bin/pip install -e . --no-deps --no-build-isolation
+~/.venvs/sticker-box/bin/pip install -e ".[test]" --no-build-isolation
 ~/.venvs/sticker-box/bin/python -m pytest -q
 SB=~/.venvs/sticker-box/bin/sticker-box scripts/smoke.sh
 python3 scripts/make_generic_testdata.py    # regenerate testdata/generic (synthetic, committed)

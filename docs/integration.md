@@ -65,6 +65,13 @@ The gallery preset finds crops and rotations with SIFT local features. They miss
 and link about one new image in twenty to an unrelated one; the README's "How duplicates are
 found" gives the measurements. Links are only reported, so this costs a look, never an image.
 
+## Files the box refuses
+
+The box never converts. When `stage` reports `file_problems`, convert the file and stage it
+again, or leave it out. `contrib/convert/sticker.py` converts to the `telegram-sticker` spec
+(static WEBP, VP9 WEBM) and back to GIF or PNG for chat apps, with Pillow and `vpx-tools`; see
+its README for the commands and the one limit (no transparency in WEBM).
+
 ## Skills
 
 `skills/` holds generic agent instructions: one `sticker-box` skill for using the tool (its

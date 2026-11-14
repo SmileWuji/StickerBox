@@ -280,7 +280,7 @@ it: the "pack aliases dropped" report is not a bug (the bot's `vocab_log` never 
 - [x] 4 Move to `rapidocr` 3.x (headless OpenCV, any Python 3.12+); OCR hint re-measured on the corpus in a dated note; a clear error when `cv2` cannot load; install docs
 - [x] 5 `docs/integration.md`: "Wrapping it as a tool"; the rollback journal pinned by a test
 - [x] 6 Search: chat phrases match text, description and note by shared CJK bigrams; tuned on the benchmark box, numbers in a dated note
-- [ ] 7 `contrib/convert/`: the conversion script in English with a README; linked from the README and the integration notes
+- [x] 7 `contrib/convert/`: the conversion script in English with a README; linked from the README and the integration notes
 - [ ] 8 `contrib/import-library.md`: the recipe for moving an existing image library into boxes
 - [ ] 9 `tag-character-series`: comparing against reference pictures, `compare.sh`, safebooru among the sources and in the description; `skills/safebooru/` with `booru.py`
 - [ ] 10 `merge` reports aliases dropped at the 32-alias cap
@@ -513,7 +513,8 @@ One skill for operating the tool, and one per tag category (decision 43, 2026-11
 - Dated notes (`YYMMDD-XXX.md`) for measurements and decisions; the newest wins.
 - The owner's workspace sits on an NTFS mount: `git config` writes fail, so edit `.git/config` by hand;
   a venv cannot be created on it, so the dev venv is `~/.venvs/sticker-box`
-  (`--system-site-packages`, then `pip install -e . --no-deps --no-build-isolation`); the pytest
+  (`--system-site-packages`, then `pip install -e ".[test]" --no-build-isolation`; since 0.2.0 it has
+  `rapidocr` 3 in the venv, which shadows the user site's old `rapidocr-onnxruntime` and GUI OpenCV); the pytest
   cache plugin is off for the same reason. Run tests with `~/.venvs/sticker-box/bin/python -m pytest -q`.
 
 ## 12. Security reviews
