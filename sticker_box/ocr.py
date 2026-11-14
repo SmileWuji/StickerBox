@@ -5,7 +5,7 @@ watermark is attribution."""
 
 import re
 
-import cv2
+from .opencv import cv2
 import numpy as np
 
 _PUNCT = re.compile(r"[\s、。，,\.!！?？~～…·・「」『』“”\"'’‘《》〈〉<>()（）【】\[\]{}\-_=+*#@^|/\\:;★♪♥]+")
@@ -37,23 +37,21 @@ def is_noise(text: str) -> bool:
 
 
 def _get_engine():
+    """RapidOCR 3 with the models in its wheel, so nothing is downloaded; its log goes to stderr."""
     global _engine
     if _engine is None:
-        import logging
+        from rapidocr import RapidOCR
 
-        from rapidocr_onnxruntime import RapidOCR
-
-        _engine = RapidOCR()
-        logging.getLogger("RapidOCR").setLevel(logging.ERROR)
+        _engine = RapidOCR(params={"Global.log_level": "error"})
     return _engine
 
 
 def _lines(rgb: np.ndarray) -> list[str]:
-    result, _ = _get_engine()(cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR))
-    if not result:
+    result = _get_engine()(cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR))
+    if not result.txts:
         return []
     boxes = []
-    for box, text, score in result:
+    for box, text, score in zip(result.boxes, result.txts, result.scores):
         if float(score) < MIN_SCORE or not str(text).strip():
             continue
         ys = [p[1] for p in box]

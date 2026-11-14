@@ -11,7 +11,7 @@ import time
 import uuid
 from pathlib import Path
 
-import cv2
+from .opencv import cv2
 import numpy as np
 
 EXTRACTOR = "sift-v1"

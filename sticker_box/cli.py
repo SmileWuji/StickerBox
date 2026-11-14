@@ -127,6 +127,10 @@ def unexpected(err: Exception) -> BoxError:
         return BoxError("os_error", f"{err.strerror or type(err).__name__}")
     if isinstance(err, UnicodeError):
         return BoxError("encoding", "an argument or file name is not valid UTF-8")
+    if isinstance(err, ImportError) and (err.name == "cv2" or "cv2" in str(err) or "libxcb" in str(err) or "libGL" in str(err)):
+        from .opencv import explain
+
+        return explain(err)
     return BoxError("internal", f"unexpected {type(err).__name__}; please report it")
 
 

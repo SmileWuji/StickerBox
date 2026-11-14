@@ -3,8 +3,9 @@ across a whole box, so the resize, transform, median rule and bit packing are fr
 vector in tests/test_phash.py pins them. cv2.dct is the orthonormal DCT-II, identical to the
 scipy `dct(..., norm="ortho")` pair BootCamp used."""
 
-import cv2
 import numpy as np
+
+from .opencv import cv2
 
 
 def bits64(rgb: np.ndarray) -> np.ndarray:

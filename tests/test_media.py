@@ -166,3 +166,33 @@ def test_private_corpus_sample_analyses(private_data):
     for path in sample:
         result = analysis.analyze(path, {"keyframe_drop_thr": 0.10, "max_keyframes": 64})
         assert result.keyframes
+
+
+def test_opencv_error_names_the_gui_build_to_remove():
+    from sticker_box import opencv
+
+    err = opencv.explain(ImportError("libxcb.so.1: cannot open shared object file"), installed=lambda name: True)
+    assert err.code == "opencv_unavailable"
+    assert "libxcb" in err.message and "pip uninstall -y opencv-python opencv-contrib-python" in err.message
+    plain = opencv.explain(ImportError("no module"), installed=lambda name: False)
+    assert plain.details["gui_builds"] == [] and "opencv-python-headless" in plain.message
+
+
+def test_a_broken_cv2_gives_the_opencv_error_on_every_path(tmp_path):
+    import json
+    import os
+    import subprocess
+    import sys
+
+    (tmp_path / "cv2.py").write_text("raise ImportError('libxcb.so.1: cannot open shared object file')\n")
+    env = {**os.environ, "PYTHONPATH": f"{tmp_path}{os.pathsep}{os.environ.get('PYTHONPATH', '')}"}
+    for argv in (["analyze", str(GENERIC / "animated.gif")], ["frames", str(GENERIC / "animated.gif")]):
+        done = subprocess.run([sys.executable, "-m", "sticker_box", *argv, "--json"], capture_output=True, text=True, env=env, cwd=tmp_path)
+        assert json.loads(done.stdout)["error"] == "opencv_unavailable", done.stdout
+
+
+def test_the_cli_maps_any_cv2_import_error():
+    from sticker_box.cli import unexpected
+
+    assert unexpected(ImportError("libGL.so.1: cannot open shared object file")).code == "opencv_unavailable"
+    assert unexpected(ImportError("no module named foo")).code == "internal"

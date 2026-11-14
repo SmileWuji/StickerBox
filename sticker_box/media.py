@@ -18,7 +18,7 @@ from collections.abc import Iterator
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
-import cv2
+from .opencv import cv2
 import numpy as np
 from PIL import Image
 

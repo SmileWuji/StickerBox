@@ -217,3 +217,13 @@ under "For the owner", continue. Each entry says what to change if the owner dis
     zh-Hans box an all-Latin character tag is usually the romanised name the skill asks to
     replace with the Chinese one. Policies stored before the flag load unchanged and read it as
     false. Undo: the `names` key in `policy._categories` and the two checks in `vocab.py`.
+
+48. **The OCR hint runs on `rapidocr` 3, not `rapidocr-onnxruntime`** (the owner's choice over
+    capping Python at 3.12). The old package pulled in the GUI OpenCV build, which shadows the
+    headless one and fails on servers without X libraries, and had no Python 3.13 build. The new
+    one depends on the headless build, bundles its models, and reads text better on the
+    benchmark stickers (has-text 0.76 to 0.84, median CER 0.18 to 0.04) at about 0.6 s more per
+    `stage` process (`261114-OCR-ENGINE.md`). The tool's own `cv2` imports go through
+    `sticker_box/opencv.py`, and the CLI maps any other OpenCV ImportError (rapidocr's, say) the
+    same way, to `opencv_unavailable` naming the GUI build to remove. Undo: the dependency in `pyproject.toml` and `_get_engine`/`_lines` in
+    `ocr.py` (the 1.4 API returns `(result, elapse)` with `[box, text, score]` rows).

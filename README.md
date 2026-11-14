@@ -22,7 +22,8 @@ leaves to the agent or person using it: reading the image and writing the tags, 
 ## Install and try
 
 ```bash
-pip install -e .                  # Python 3.12+
+pip install -e .                  # Python 3.12 or later
+python3 -c "import cv2, rapidocr"  # fails if a GUI OpenCV build shadows the headless one; see docs/integration.md
 sticker-box init stickers --preset telegram-sticker --language zh-Hans
 sticker-box stage some.webp --box stickers
 sticker-box commit <ref> --box stickers --license unknown --text "" --note "when to send it" \
@@ -104,6 +105,9 @@ Median times in milliseconds inside one Python process, for a sticker box of eac
 - As separate processes, which is what an agent pays per call, at 10,000 stickers: `show`
   108 ms, `search --tag` 128 ms, `stage` 698 ms (mostly loading the OCR model), `commit` 380 ms.
   Python start-up alone is about 70 ms.
+- These numbers are from 0.1.0. Since 0.2.0 the OCR hint runs on RapidOCR 3, which reads text
+  better and costs about 0.6 s more per `stage` process and about 70 ms more per image
+  (`261114-OCR-ENGINE.md`).
 - Gallery inserts are the slow path: SIFT matching runs at `stage` and again at `commit`,
   about 1.6 s each with 3,000 images stored and 3.5 s each with 10,000. The synthetic features
   never resemble each other, so this is the vote over every stored image without the closer

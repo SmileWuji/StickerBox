@@ -11,7 +11,7 @@ from . import media, ocr
 from .errors import BoxError
 from .phash import to_hex
 
-EXTRACTOR = "analysis-v1"
+EXTRACTOR = "analysis-v2"
 
 
 @dataclass

@@ -14,9 +14,21 @@ python3 -m sticker_box --help      # same thing without the console script
 Install from a checkout you trust. A package called `sticker-box` on PyPI is not this project
 unless this README says it has been published there.
 
-Python 3.12+, with numpy, opencv-python-headless, pillow, rapidocr-onnxruntime and onnxruntime
-(about 150 to 200 MB installed). No GPU, no network, no model downloads at run time: RapidOCR's
+Python 3.12 or later, with numpy, opencv-python-headless, pillow, rapidocr and onnxruntime
+(about 200 MB installed). No GPU, no network, no model downloads at run time: RapidOCR's
 models ship in its wheel. No ffmpeg binary is needed.
+
+Check the install with `python3 -c "import cv2, rapidocr"`. The GUI build `opencv-python` and
+`opencv-python-headless` both provide the `cv2` module, and whichever is installed last wins. If
+anything in the same environment pulls in the GUI build (the older `rapidocr-onnxruntime` did),
+`cv2` fails on a server without X libraries (`libxcb`), and the tool says so with exit code 1
+and the error `opencv_unavailable`. Keep only the headless build:
+
+```bash
+pip uninstall -y opencv-python
+pip install --force-reinstall --no-deps opencv-python-headless
+python3 -c "import cv2, rapidocr"
+```
 
 ## Create the boxes once
 
