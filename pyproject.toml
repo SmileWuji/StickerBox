@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sticker-box"
-version = "0.1.0"
+version = "0.2.0"
 description = "A directory of images with a SQLite index, a generated manual and an enforced policy, kept by AI agents and readable by humans"
 readme = "README.md"
 license = { text = "MIT" }

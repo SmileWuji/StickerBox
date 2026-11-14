@@ -23,6 +23,30 @@ from disk alone:
 
 ## For the owner
 
+State on 2026-11-14: 0.2.0, the first consumer's feedback done (checklist section "First
+consumer's feedback"). What changed for QQBot, with what it has to do:
+
+- **Install**: `rapidocr` 3 replaces `rapidocr-onnxruntime`, so the Dockerfile's OpenCV
+  reinstall step can go; keep the `python -c "import cv2, rapidocr"` check. Python 3.13 works.
+  `stage` costs about 0.6 s more per process and reads text better (`261114-OCR-ENGINE.md`).
+- **Wrapper**: long options can no longer be abbreviated, so the prefix matching in its
+  argument checks is unnecessary; refuse `--stdin` (with stdin ignored, `notes set --stdin`
+  would clear the notes). Pass the dice's chat text as `--query=<text>` instead of dropping
+  words that start with `-`, and use `search --random` instead of fetching 500 and shuffling.
+  `docs/integration.md`, "Wrapping it as a tool", is the checklist.
+- **Search**: Chinese phrases now reach descriptions and notes (`261114-PHRASE-SEARCH.md`), so
+  the dice should find candidates for about a third of chat lines instead of one in eight.
+  Scores may be decimals now.
+- **Policy**: new boxes mark `pack` as a names category; the existing stickers box needs
+  `policy set categories` with `"names": true` added to `pack` (copy the rest from
+  `policy show categories`) to stop the warnings on Latin pack names.
+- **Skills**: `tag-character-series` now has the reference-picture section and `compare.sh`,
+  and `skills/safebooru/` is new, so the bot's local copies can follow upstream again.
+
+Not done: the WEBM path of `contrib/convert/` and `compare.sh` were not run here (no `vpx-tools`,
+jq or ImageMagick on this machine); the skill examples' transcripts still show 0.1.0's OCR hints
+(the test does not compare answers); DeepSeek is still not benchmarked.
+
 State on 2026-11-09 (evening): M0 to M8 and the backlog are done. 223 tests and
 `scripts/smoke.sh` pass. Read in this order:
 
@@ -284,7 +308,7 @@ it: the "pack aliases dropped" report is not a bug (the bot's `vocab_log` never 
 - [x] 8 `contrib/import-library.md`: the recipe for moving an existing image library into boxes
 - [x] 9 `tag-character-series`: comparing against reference pictures, `compare.sh`, safebooru among the sources and in the description; `skills/safebooru/` with `booru.py`
 - [x] 10 `merge` reports aliases dropped at the 32-alias cap
-- [ ] 11 Version 0.2.0; README, owner section and decisions updated
+- [x] 11 Version 0.2.0; README, owner section and decisions updated
 
 ## 1. Scope
 
