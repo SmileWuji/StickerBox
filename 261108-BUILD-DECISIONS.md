@@ -234,3 +234,12 @@ under "For the owner", continue. Each entry says what to change if the owner dis
     most three quarters of an exact match in the same column, so tags and verbatim hits still
     rank first; scores became decimals. No index and no word segmenter: a scan is fast enough at the sizes in use (about
     40 ms per phrase at 10,000 items). Undo: the `texts` argument in `search._term_hits`.
+
+50. **`tag-character-series` compares against reference pictures and names its sources in its
+    description; a `safebooru` skill ships with `booru.py`** (the owner's choice: upstream as
+    QQBot has them). QQBot's agent named characters from memory, with wrong hair colours and
+    the same wrong name twice; putting the picture and each candidate's reference pictures on
+    one sheet replaces recall with comparison. The description names bangumi.tv and safebooru
+    because an agent sees only the description until it loads a skill. The skill text was
+    benchmarked before these additions and not since. `booru.py` now writes sheets to
+    `$BOORU_OUT` and prunes only its own files there. Undo: `git revert` the commit.

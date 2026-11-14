@@ -1,6 +1,6 @@
 ---
 name: tag-character-series
-description: Name who is pictured and the work they come from, with the character and series categories. Use when adding stickers that show a recognisable character; covers how to find one from the other, the reference sources, and when to leave the tags out.
+description: Name who is pictured and the work they come from, with the character and series categories. Use when adding stickers that show a recognisable character; covers how to find one from the other, the reference sources (bangumi.tv, safebooru), and when to leave the tags out.
 ---
 
 # Character and series
@@ -23,6 +23,10 @@ together, because each one narrows the other.
      kind (anime, games, manga, novels), each with its cast of characters and their Chinese
      names; each character's page lists the works they appear in.
    - Wikipedia, then IMDb for live action.
+   - [safebooru](https://safebooru.org), through the `safebooru` skill: what a character looks like
+     and the romanised tag a character goes by there (`booru.py tag <name>` gives the spelling and
+     post count; `booru.py search <tag> solo --sheet` shows their usual hair, eyes and outfit).
+     It names who is drawn, never the Chinese tag: take that from bangumi.tv.
 3. **What you see**, only to choose among names a source already gave you. Naming a character
    from the picture alone is unreliable: in testing, a capable model named the wrong character
    far more often than the right one. Hair colour and outfit are not enough.
@@ -54,6 +58,31 @@ bangumi.tv has an open API; fetch these URLs with whatever web tool you have (no
    `infobox`, key `简体中文名`. That is the `character` tag.
 
 Do not guess page URLs; search first. If the search finds nothing that fits, leave the tag out.
+
+## Comparing against reference pictures
+
+Choosing among candidates "by comparing pictures" means putting them side by side, not recalling
+what a character looks like. Memory gets hair colours and accessories wrong, and stops at the
+first name that comes to mind.
+
+1. **Describe before naming.** Hair colour and style, eye colour, headwear (hat, ribbon, horns,
+   ears), outfit, what they hold (instrument, weapon, prop), any mascot or pet, the art style,
+   and any text, signature or watermark on the image. A small picture (a 160 px chat thumbnail)
+   is enlarged first, e.g. `convert <picture> -filter Lanczos -resize 400% zoom.png`, and looked
+   at again; hair is often mistaken for a hat at that size.
+2. **Two or three candidates, not one.** From the source, the work's cast on bangumi.tv, or the
+   features above. Many characters share a hair colour and a hat.
+3. **One contact sheet.** `compare.sh <picture> <tag> [<tag> ...]` in this skill's folder (needs
+   curl, jq and ImageMagick) puts the picture in row 0 and, for each candidate, three top-scored
+   solo all-ages pictures from safebooru.org in its own row, labelled. Tags are safebooru's
+   romanised names, family name first (`komeiji_koishi`, `kirisame_marisa`); a wrong tag prints
+   similar ones, or look them up with the `safebooru` skill's `booru.py tag <name>`.
+   The sheet goes to `$COMPARE_OUT` (default `./character-id`). bangumi.tv's cast `images` serve
+   the same purpose when a work has no safebooru tag.
+4. **Compare feature by feature**: hair, eyes, the signature accessory and outfit. Different
+   artists draw very differently; the character's own features are what must match. All of
+   them match → the name holds. Some do not → it is a guess: for tags, leave `character` out and
+   mention it in `--description`; try other candidates if you have them.
 
 ## When the pack and the picture disagree
 
