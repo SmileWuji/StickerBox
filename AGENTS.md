@@ -274,7 +274,7 @@ QQBot ran 0.1.0 at `8307df4` from 2026-11-10 and sent a handoff. The owner chose
 method, `compare.sh` and the safebooru helper upstream as the bot has them. Checked while reading
 it: the "pack aliases dropped" report is not a bug (the bot's `vocab_log` never had those aliases).
 
-- [ ] 1 No option abbreviations (`allow_abbrev=False`), so a wrapper can filter options by exact name
+- [x] 1 No option abbreviations (`allow_abbrev=False`), so a wrapper can filter options by exact name
 - [ ] 2 `search --query=<text>` for free text starting with `-`; `search --random [--seed N]` shuffles equal scores
 - [ ] 3 `names` flag per category skips the script check; set on `pack` in the `telegram-sticker` preset
 - [ ] 4 Move to `rapidocr` 3.x (headless OpenCV, any Python 3.12+); OCR hint re-measured on the corpus in a dated note; a clear error when `cv2` cannot load; install docs

@@ -11,6 +11,13 @@ Handler = Callable[[argparse.Namespace], dict]
 
 
 class _Parser(argparse.ArgumentParser):
+    """Long options must be written in full, so a caller that filters options by name (a wrapper
+    refusing --box, say) cannot be bypassed with a prefix such as --bo."""
+
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("allow_abbrev", False)
+        super().__init__(*args, **kwargs)
+
     def error(self, message):
         raise BoxError("usage", f"{self.prog}: {message}", exit_code=EXIT_USAGE)
 

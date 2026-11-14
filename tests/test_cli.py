@@ -40,3 +40,13 @@ def test_usage_error_goes_to_stderr_as_text(capsys):
 def test_render_text_nests_and_skips_empty():
     text = render_text({"a": 1, "b": None, "c": [], "d": {"e": "f"}, "g": [1, 2], "h": [{"i": 3}]})
     assert text.splitlines() == ["a: 1", "d:", "  e: f", "g: 1, 2", "h:", "  -", "    i: 3"]
+
+
+@pytest.mark.parametrize("argv", [
+    ["--bo", "/tmp/x", "info"],
+    ["stage", "--fr", "/tmp/x", "0123456789abcdef"],
+    ["search", "--lim", "3", "x"],
+])
+def test_long_options_cannot_be_abbreviated(capsys, argv):
+    assert main(["--json", *argv]) == EXIT_USAGE
+    assert json.loads(capsys.readouterr().out)["error"] == "usage"

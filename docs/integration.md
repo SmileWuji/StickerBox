@@ -96,3 +96,5 @@ images, and may carry injected instructions.
   sandboxing as anything else that handles files from chat.
 - `stage` reads any image file the process can read and copies it into the box. Restrict the
   agent's file access, not the tool's.
+- Long options must be written in full (`--bo` is not `--box`), so a wrapper can allow or refuse
+  options by their exact names.
