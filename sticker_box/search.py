@@ -1,9 +1,15 @@
 """Search over tags (values, aliases, narrower tags), on-image text, descriptions, notes and
 fields. Each term scores an item by its best match; an item's score is the sum over terms, so
 items matching more terms rank first, then newer ones. `LIKE` handles short Chinese terms that a
-trigram index could not."""
+trigram index could not.
+
+Chinese chat has no spaces, so a term is often a whole phrase that never appears verbatim in a
+description. Such a term also matches the free text by the character pairs they share, counting
+only pairs that are not common across the box (decision 49, `261114-PHRASE-SEARCH.md`)."""
 
 import random
+import re
+from collections import Counter
 
 from . import clock, paths, vocab
 from .errors import BoxError
@@ -13,6 +19,14 @@ TEXT, NOTE, DESCRIPTION, FIELD = 6, 4, 2, 1
 SNIPPET = 160
 MAX_TERMS = 16
 MAX_TERM = 64
+PHRASE_COLUMNS = (("text", TEXT), ("note", NOTE), ("description", DESCRIPTION))
+PHRASE_MIN_CHARS = 3
+PAIRS_NEEDED = 2
+PHRASE_WEIGHT = 0.75
+COMMON_SHARE = 0.3
+COMMON_FLOOR = 3
+FUNCTION_CHARS = set("的了是不在有我你他她它们这那个一就也都还会能要吗呢吧啊么什怎没很和与把被给让到说看想得着过来去上下又再才只哪谁嘛呀哦")
+_CJK = re.compile(r"[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]+")
 
 
 def terms_of(query: str) -> list[str]:
@@ -71,10 +85,53 @@ def _tag_scores(conn, term: str) -> dict[int, tuple[int, str]]:
     return scores
 
 
-def _term_hits(conn, term: str) -> dict[str, tuple[int, str]]:
-    hits: dict[str, tuple[int, str]] = {}
+def _pairs(text: str) -> set[str]:
+    """Character pairs within each run of CJK text, except pairs of two grammatical words
+    (什么, 不会, 你怎), which chat and descriptions share without meaning the same thing."""
+    pairs = {run[i:i + 2] for run in _CJK.findall(text) for i in range(len(run) - 1)}
+    return {p for p in pairs if not (p[0] in FUNCTION_CHARS and p[1] in FUNCTION_CHARS)}
 
-    def give(sha: str, score: int, why: str):
+
+def _phrase_hits(texts: list, term: str) -> dict[str, tuple[float, str]]:
+    """Items whose text, note or description share at least PAIRS_NEEDED uncommon character pairs
+    with the term, scored by the share of the term's uncommon pairs found, times PHRASE_WEIGHT of
+    the column's weight, so a phrase match ranks below the column holding the whole term. A pair
+    counts as common when more than COMMON_SHARE of the items carry it."""
+    if sum(len(run) for run in _CJK.findall(term)) < PHRASE_MIN_CHARS:
+        return {}
+    pairs = _pairs(term)
+    found: dict[str, dict[str, set[str]]] = {}
+    carriers: Counter = Counter()
+    for row in texts:
+        per, seen = {}, set()
+        for column, _ in PHRASE_COLUMNS:
+            if row[column]:
+                shared = {p for p in pairs if p in row[column]}
+                if shared:
+                    per[column] = shared
+                    seen |= shared
+        if per:
+            found[row["sha256"]] = per
+            carriers.update(seen)
+    common = max(COMMON_FLOOR, COMMON_SHARE * len(texts))
+    useful = {p for p in pairs if carriers[p] <= common}
+    hits: dict[str, tuple[float, str]] = {}
+    if len(useful) < PAIRS_NEEDED:
+        return hits
+    for sha, per in found.items():
+        for column, weight in PHRASE_COLUMNS:
+            k = len(per.get(column, set()) & useful)
+            if k >= PAIRS_NEEDED:
+                score = round(PHRASE_WEIGHT * weight * k / len(useful), 2)
+                if score > hits.get(sha, (0, ""))[0]:
+                    hits[sha] = (score, f"{column}, {k} of {len(useful)} character pairs")
+    return hits
+
+
+def _term_hits(conn, term: str, texts: list | None = None) -> dict[str, tuple[float, str]]:
+    hits: dict[str, tuple[float, str]] = {}
+
+    def give(sha: str, score: float, why: str):
         if score > hits.get(sha, (0, ""))[0]:
             hits[sha] = (score, why)
 
@@ -94,6 +151,9 @@ def _term_hits(conn, term: str) -> dict[str, tuple[int, str]]:
             give(r["sha256"], score, column)
     for r in conn.execute("SELECT DISTINCT sha256 FROM item_field WHERE value LIKE ? ESCAPE '\\'", (pattern,)):
         give(r["sha256"], FIELD, "field")
+    if texts is not None:
+        for sha, (score, why) in _phrase_hits(texts, term).items():
+            give(sha, score, why)
     return hits
 
 
@@ -131,12 +191,15 @@ def search(box, query: str, tags: list[str] = (), category: str | None = None, a
         params.append(_like(license))
     where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
     allowed = {r["sha256"]: r["added_at"] for r in conn.execute(f"SELECT i.sha256, i.added_at FROM item i {where}", params)}
-    scores: dict[str, int] = {}
+    scores: dict[str, float] = {}
     matched: dict[str, list[str]] = {}
+    texts = None
+    if any("=" not in t and sum(map(len, _CJK.findall(t))) >= PHRASE_MIN_CHARS for t in terms):
+        texts = conn.execute("SELECT sha256, text, note, description FROM item").fetchall()
     for term in terms:
-        for sha, (score, why) in _term_hits(conn, term).items():
+        for sha, (score, why) in _term_hits(conn, term, texts).items():
             if sha in allowed:
-                scores[sha] = scores.get(sha, 0) + score
+                scores[sha] = round(scores.get(sha, 0) + score, 2)
                 matched.setdefault(sha, []).append(f"{term}: {why}")
     if not terms:
         scores = {sha: 0 for sha in allowed}

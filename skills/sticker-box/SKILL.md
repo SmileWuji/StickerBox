@@ -72,7 +72,9 @@ sticker-box show <ref> --json                  # everything about one image
 ```
 
 Search matches the words you give literally, in tags, aliases, tag definitions, the text on
-the image, notes and descriptions; it does not understand meaning. Give several words at once,
+the image, notes and descriptions; it does not understand meaning. A Chinese phrase of three or
+more characters also finds text, notes and descriptions that share two-character pieces with
+it, so a whole chat line works, but short exact words rank higher. Give several words at once,
 including synonyms and the words people would actually say (`明知故问 废话 显而易见`). Each
 result has `file` (an absolute path you can send), `tags`, `note` (when to use it) and
 `matched` (why it was found). With no words, results are the newest first. A `<ref>` is the image's sha256, or its first 8 or more characters.

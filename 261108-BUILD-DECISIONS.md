@@ -227,3 +227,10 @@ under "For the owner", continue. Each entry says what to change if the owner dis
     `sticker_box/opencv.py`, and the CLI maps any other OpenCV ImportError (rapidocr's, say) the
     same way, to `opencv_unavailable` naming the GUI build to remove. Undo: the dependency in `pyproject.toml` and `_get_engine`/`_lines` in
     `ocr.py` (the 1.4 API returns `(result, elapse)` with `[box, text, score]` rows).
+
+49. **A Chinese phrase in a query also matches text, notes and descriptions by shared character
+    pairs** (`261114-PHRASE-SEARCH.md`). Two uncommon pairs are needed, never fewer; pairs of two
+    grammatical words and pairs carried by more than 30% of the items do not count. Scored at
+    most three quarters of an exact match in the same column, so tags and verbatim hits still
+    rank first; scores became decimals. No index and no word segmenter: a scan is fast enough at the sizes in use (about
+    40 ms per phrase at 10,000 items). Undo: the `texts` argument in `search._term_hits`.

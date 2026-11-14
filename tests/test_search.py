@@ -141,3 +141,42 @@ def test_random_shuffles_only_equal_scores(tagged):
     for seed in range(8):
         ranked = top(tagged, "无语", "托腮", n=3, extra=("--random", "--seed", str(seed)))
         assert ranked[0] == 2 and set(ranked[1:]) == {1, 12}
+
+
+def test_chat_phrases_match_descriptions_by_shared_character_pairs(tmp_path, run_cli):
+    root = tmp_path / "p"
+    run_cli("init", str(root), "--preset", "telegram-sticker", "--language", "zh-Hans")
+    refs = {}
+    for seed, description in [(1, "抱着枕头睡着了"), (2, "举着牌子生气"), (3, "坐在电脑前打字")]:
+        path = factory.write_webp(tmp_path / f"{seed}.webp", factory.picture(seed + 300, (512, 512), alpha=True))
+        (staged,) = run_cli("stage", str(path), "--box", str(root))["results"]
+        out = run_cli("commit", staged["ref"], "--box", str(root), "--license", "unknown", "--text", "", "--note", "测试",
+                      "--description", description, "--define", "emotion=平静", "平静")
+        refs[out["ref"]] = seed
+
+    def found(query):
+        return [refs[r["ref"]] for r in run_cli("search", f"--query={query}", "--box", str(root))["results"]]
+
+    assert found("昨天抱着枕头就睡着了") == [1]
+    assert found("笑死，他举着牌子") == [2]
+    assert found("你怎么不会这个") == []
+    assert found("枕头好软") == []
+    assert found("睡着吗") == []
+
+
+def test_a_phrase_match_ranks_below_the_exact_text(tmp_path, run_cli, monkeypatch):
+    from sticker_box import clock
+
+    root = tmp_path / "p"
+    run_cli("init", str(root), "--preset", "telegram-sticker", "--language", "zh-Hans")
+    refs = {}
+    for seed, description in [(1, "抱枕头"), (2, "抱枕和枕头")]:
+        monkeypatch.setattr(clock, "stamp", lambda seed=seed: f"2026-01-0{seed}T00:00:00Z")
+        path = factory.write_webp(tmp_path / f"{seed}.webp", factory.picture(seed + 400, (512, 512), alpha=True))
+        (staged,) = run_cli("stage", str(path), "--box", str(root))["results"]
+        out = run_cli("commit", staged["ref"], "--box", str(root), "--license", "unknown", "--text", "", "--note", "测试",
+                      "--description", description, "--define", "emotion=平静", "平静")
+        refs[out["ref"]] = seed
+    results = run_cli("search", "抱枕头", "--box", str(root))["results"]
+    assert [refs[r["ref"]] for r in results] == [1, 2]
+    assert results[1]["score"] < results[0]["score"]

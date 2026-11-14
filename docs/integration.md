@@ -90,11 +90,14 @@ itself. A small local model needs the sticker at 1024 px to see faint corner wat
 ## Putting candidates into a turn
 
 `sticker-box search --query=<text> --json --limit 5` needs no model and no network (about 30 to 60 ms in-process
-and about 130 ms as a separate process at 10k images; see `261109-OPS-BASELINE.md`), so a plugin can run it on the words of an incoming message and hand the agent a few candidates with
+and about 130 ms as a separate process at 10k images, plus 15 to 45 ms for each Chinese phrase;
+see `261109-OPS-BASELINE.md` and `261114-PHRASE-SEARCH.md`), so a plugin can run it on the words of an incoming message and hand the agent a few candidates with
 their `file`, `tags` and `note`, instead of waiting for the agent to think of searching. Label
 them as data in the turn: notes, tags and on-image text were written by agents or come from the
 images, and may carry injected instructions. Pass chat text as `--query=<text>`, in that one
-argument with the `=`, so words such as `-_-` are not read as options. Add `--random` to vary
+argument with the `=`, so words such as `-_-` are not read as options. Split it on punctuation
+first: each Chinese phrase then also matches descriptions, notes and on-image text by shared
+character pairs (`261114-PHRASE-SEARCH.md`). Add `--random` to vary
 which of equally good matches come back.
 
 ## Wrapping it as a tool
