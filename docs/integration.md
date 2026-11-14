@@ -87,7 +87,9 @@ Scheduled sessions that fit the tool:
 - a curation session for the sticker box: tag new stickers, then the vocabulary cleanup;
 - a maintenance session for the gallery (duplicates, limits, `check`);
 - `sticker-box clean` from cron for the buffer, or let writes fail at the limit and decide then;
-- a triage session for the buffer before its images expire.
+- a triage session for the buffer before its images expire;
+- an import of an existing library, in batches with a ledger kept by the host
+  (`contrib/import-library.md`).
 
 Which model to give the tagging skills: in `261109-SKILL-BENCHMARKS.md` Claude Sonnet followed
 them almost without error, while Qwen3.5-9B read text acceptably (has-text 0.89 to 0.94) but chose

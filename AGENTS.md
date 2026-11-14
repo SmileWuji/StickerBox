@@ -281,7 +281,7 @@ it: the "pack aliases dropped" report is not a bug (the bot's `vocab_log` never 
 - [x] 5 `docs/integration.md`: "Wrapping it as a tool"; the rollback journal pinned by a test
 - [x] 6 Search: chat phrases match text, description and note by shared CJK bigrams; tuned on the benchmark box, numbers in a dated note
 - [x] 7 `contrib/convert/`: the conversion script in English with a README; linked from the README and the integration notes
-- [ ] 8 `contrib/import-library.md`: the recipe for moving an existing image library into boxes
+- [x] 8 `contrib/import-library.md`: the recipe for moving an existing image library into boxes
 - [ ] 9 `tag-character-series`: comparing against reference pictures, `compare.sh`, safebooru among the sources and in the description; `skills/safebooru/` with `booru.py`
 - [ ] 10 `merge` reports aliases dropped at the 32-alias cap
 - [ ] 11 Version 0.2.0; README, owner section and decisions updated

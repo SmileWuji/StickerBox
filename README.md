@@ -141,6 +141,7 @@ How well a model tags stickers by following `skills/`, on 264 stickers from a pr
 - `skills/`: instructions for agents, for using the tool and for tagging.
 - `contrib/convert/`: a script that converts images to the Telegram sticker spec, for files
   `stage` refuses (the tool itself never converts).
+- `contrib/import-library.md`: how to have an agent move an existing image library into boxes.
 
 ## Development
 
