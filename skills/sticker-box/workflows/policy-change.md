@@ -17,7 +17,8 @@ such as ethnicity.
 2. Add one entry: `"race": {"description": "Race or species of who is pictured", "multiple": false, "required": false}`.
    `multiple` says whether one image may carry several values. Start with `required: false`:
    a required category makes every existing image fail `check` and blocks commits until each
-   one is tagged.
+   one is tagged. `names: true` marks values as proper names (pack titles, say), so a name in
+   another script than the box's language draws no warning. Keep every key you copied.
 3. Write the whole object back: `sticker-box policy set categories --stdin --box <box> --json`
    with the JSON on standard input. The change is logged and appears in the box's `README.md`.
 4. Create its first values with definitions:

@@ -25,7 +25,7 @@ PRESETS = {
                 "character": {"description": "Who is pictured, named after the box's reference sources.", "multiple": True},
                 "series": {"description": "The work or franchise the character comes from.", "multiple": True},
                 "visual": {"description": "What is shown: actions, objects, poses, notable details.", "multiple": True},
-                "pack": {"description": "A collection the sticker belongs to; a pack is a tag.", "multiple": True},
+                "pack": {"description": "A collection the sticker belongs to; a pack is a tag.", "multiple": True, "names": True},
             },
             "files": {
                 "formats": {

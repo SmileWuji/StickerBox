@@ -92,11 +92,12 @@ def _categories(p: dict) -> dict:
     for name, spec in p.items():
         if not CATEGORY_NAME.fullmatch(name):
             _fail("categories", f"category name {name!r} must be 1 to 32 letters, digits, '_' or '-'")
-        spec = _keys("categories", spec or {}, {"description", "multiple", "required"}, name)
+        spec = _keys("categories", spec or {}, {"description", "multiple", "required", "names"}, name)
         out[name] = {
             "description": _text("categories", spec.get("description", ""), f"{name}.description"),
             "multiple": _bool("categories", spec.get("multiple", True), f"{name}.multiple"),
             "required": _bool("categories", spec.get("required", False), f"{name}.required"),
+            "names": _bool("categories", spec.get("names", False), f"{name}.names"),
         }
     return out
 
@@ -325,7 +326,8 @@ def describe(policy: dict) -> dict[str, list[str]]:
     for name, spec in policy["categories"].items():
         count = "one or more values" if spec["multiple"] else "one value"
         need = "required" if spec["required"] else "optional"
-        lines.append(f"`{name}` ({need}, {count})" + (f": {_safe(spec['description'])}" if spec["description"] else ""))
+        names = ", proper names in any script" if spec.get("names") else ""
+        lines.append(f"`{name}` ({need}, {count}{names})" + (f": {_safe(spec['description'])}" if spec["description"] else ""))
     mode = policy["vocabulary"]["mode"]
     lines.append({
         "free": "Vocabulary is free: any tag may be used and is created on first use.",

@@ -14,7 +14,7 @@ sticker-box policy set categories --stdin --box stickers --json <<'EOF'
   "character": {"description": "Who is pictured, named after the box's reference sources.", "multiple": true, "required": false},
   "series": {"description": "The work or franchise the character comes from.", "multiple": true, "required": false},
   "visual": {"description": "What is shown: actions, objects, poses, notable details.", "multiple": true, "required": false},
-  "pack": {"description": "A collection the sticker belongs to; a pack is a tag.", "multiple": true, "required": false},
+  "pack": {"description": "A collection the sticker belongs to; a pack is a tag.", "multiple": true, "required": false, "names": true},
   "race": {"description": "Race or species of who is pictured.", "multiple": false, "required": false}
 }
 EOF

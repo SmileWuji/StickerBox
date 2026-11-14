@@ -276,7 +276,7 @@ it: the "pack aliases dropped" report is not a bug (the bot's `vocab_log` never 
 
 - [x] 1 No option abbreviations (`allow_abbrev=False`), so a wrapper can filter options by exact name
 - [x] 2 `search --query=<text>` for free text starting with `-`; `search --random [--seed N]` shuffles equal scores
-- [ ] 3 `names` flag per category skips the script check; set on `pack` in the `telegram-sticker` preset
+- [x] 3 `names` flag per category skips the script check; set on `pack` in the `telegram-sticker` preset
 - [ ] 4 Move to `rapidocr` 3.x (headless OpenCV, any Python 3.12+); OCR hint re-measured on the corpus in a dated note; a clear error when `cv2` cannot load; install docs
 - [ ] 5 `docs/integration.md`: "Wrapping it as a tool"; the rollback journal pinned by a test
 - [ ] 6 Search: chat phrases match text, description and note by shared CJK bigrams; tuned on the benchmark box, numbers in a dated note
@@ -409,7 +409,7 @@ contains scripts. Rule kinds:
 | rule | params |
 |---|---|
 | `fields` | declared fields and which are required (`license` always exists; `unknown` is valid) |
-| `categories` | name, description, cardinality `one` / `at_least_one` / `any`, required |
+| `categories` | name, description, cardinality `one` / `at_least_one` / `any`, required, `names` (values are proper names: no script check) |
 | `files` | formats, side rules (max, min, exact on one side), max bytes per format, duration, fps, audio, animation allowed |
 | `vocabulary` | `free` / `open` / `locked` |
 | `duplicates` | pHash distance, SIFT settings (or none); matches are always reported with suggested `remove` commands, never acted on |

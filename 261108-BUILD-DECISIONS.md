@@ -196,3 +196,24 @@ under "For the owner", continue. Each entry says what to change if the owner dis
     larger, then animated, ties to the stored or older copy; file size is not quality. Crops,
     rotations, frames and overlaps get no command, because a group can be joined by a false link
     and a crop is often a different image. Undo: `sticker_box/dupes.py`.
+
+
+## First consumer's feedback (2026-11-14)
+
+45. **Long options must be written in full** (`allow_abbrev=False` on every parser). QQBot's
+    wrapper refuses `--box` and rewrites `--from` by name and had to match every prefix to do
+    it. Undo: drop the `__init__` of `_Parser` in `sticker_box/cli.py`.
+
+46. **`search --random` shuffles only items of equal score; `--query=TEXT` carries free text.**
+    A search with only filters scores every item 0, so it becomes a full shuffle, while a ranked
+    search keeps its best matches first. `--seed` repeats an order for tests. `--query` exists
+    because argparse reads a word such as `-_-` as an option; only the `=` form passes text that
+    starts with a dash. Undo: the two branches in `search.search` and the options in `commands.py`.
+
+47. **A category can declare `names: true`, which skips the script check on its new tags; the
+    `telegram-sticker` preset sets it on `pack` only** (the owner's choice). Pack titles such as
+    a Telegram set name are proper names in whatever script their author chose, and warning on
+    each one taught the agent to ignore warnings. `character` and `series` keep the check: in a
+    zh-Hans box an all-Latin character tag is usually the romanised name the skill asks to
+    replace with the Chinese one. Policies stored before the flag load unchanged and read it as
+    false. Undo: the `names` key in `policy._categories` and the two checks in `vocab.py`.

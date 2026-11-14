@@ -179,7 +179,7 @@ def plan(conn: sqlite3.Connection, policy: dict, tags: list[str], defines: list[
             continue
         result.create.append({"category": category, "value": value, "definition": definition or None})
         result.labels.append(label)
-        warning = script_check.mismatch(value, language)
+        warning = None if categories[category].get("names") else script_check.mismatch(value, language)
         if warning:
             result.warnings.append(f"{label}: {warning}")
     return result
@@ -282,7 +282,7 @@ def new(conn, policy, language, category, value, definition, parent=None, aliase
     log(conn, "create", {"category": category, "value": value, "definition": definition.strip(), "parent": parent, "via": "tag new"})
     from . import script_check
 
-    warning = None if lang else script_check.mismatch(value, language)
+    warning = None if lang or policy["categories"][category].get("names") else script_check.mismatch(value, language)
     return {"tag": f"{category}={value}", "id": cur.lastrowid, "warnings": [warning] if warning else []}
 
 

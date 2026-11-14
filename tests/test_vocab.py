@@ -147,3 +147,27 @@ def test_merge_reports_items_that_already_had_the_target(sbox, run_cli, tmp_path
     add_sticker(run_cli, sbox, tmp_path, 1, "--define", "emotion=理直气壮", "理不直气也壮", "--tag", "emotion=傲娇")
     out = run_cli("tag", "merge", "emotion", "傲娇", "理直气壮", *box)
     assert out["items_retagged"] == 0 and out["items_already_tagged"] == 1 and "1 item(s) lost" in out["message"]
+
+
+def test_name_categories_skip_the_script_check(sbox, run_cli, tmp_path):
+    out = add_sticker(run_cli, sbox, tmp_path, 31, "--define", "emotion=开心", "高兴",
+                      "--define", "pack=MokaPackX", "a pack", "--define", "character=Moka", "a character")
+    warned = " ".join(out.get("warnings", []))
+    assert "pack=MokaPackX" not in warned and "character=Moka" in warned
+    assert run_cli("tag", "new", "pack", "OtherPack", "--means", "another pack", "--box", str(sbox))["warnings"] == []
+    assert run_cli("tag", "new", "visual", "Smile", "--means", "x", "--box", str(sbox))["warnings"]
+    readme = (sbox / "README.md").read_text()
+    assert "`pack` (optional, one or more values, proper names in any script)" in readme
+
+
+def test_name_flag_is_validated_and_old_policies_still_load(sbox, run_cli, tmp_path):
+    run_cli("policy", "set", "categories", '{"emotion": {"required": true}, "pack": {"names": "yes"}}', "--box", str(sbox), expect=1)
+    run_cli("policy", "set", "categories", '{"emotion": {"required": true}, "pack": {}}', "--box", str(sbox))
+    shown = run_cli("policy", "show", "categories", "--box", str(sbox))["params"]
+    assert shown["pack"]["names"] is False
+    import sqlite3
+
+    with sqlite3.connect(sbox / "box.sqlite3") as conn:
+        conn.execute("UPDATE policy_rule SET params = ? WHERE name = 'categories'", ('{"emotion": {"description": "", "multiple": true, "required": true}, "pack": {"description": "", "multiple": true, "required": false}}',))
+    out = add_sticker(run_cli, sbox, tmp_path, 32, "--define", "emotion=开心", "高兴", "--define", "pack=MokaPackX", "a pack")
+    assert any("pack=MokaPackX" in w for w in out["warnings"])
