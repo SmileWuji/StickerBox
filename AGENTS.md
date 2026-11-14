@@ -43,9 +43,12 @@ consumer's feedback"). What changed for QQBot, with what it has to do:
 - **Skills**: `tag-character-series` now has the reference-picture section and `compare.sh`,
   and `skills/safebooru/` is new, so the bot's local copies can follow upstream again.
 
-Not done: the WEBM path of `contrib/convert/` and `compare.sh` were not run here (no `vpx-tools`,
-jq or ImageMagick on this machine); the skill examples' transcripts still show 0.1.0's OCR hints
-(the test does not compare answers); DeepSeek is still not benchmarked.
+Verified after installing `vpx-tools`, jq and ImageMagick: every `contrib/convert/` path (GIF,
+animated WEBP and WEBM in; WEBM, GIF and PNG out; crop, start, speed) passes `stage` in a strict
+`telegram-sticker` box, and `compare.sh` builds its sheet from safebooru. Its hint for a wrong
+tag was useless (it offered the misspelling itself), so it now searches character tags by each
+word of the name. Not done: the skill examples' transcripts still show 0.1.0's OCR hints (the
+test does not compare answers); DeepSeek is still not benchmarked.
 
 State on 2026-11-09 (evening): M0 to M8 and the backlog are done. 223 tests and
 `scripts/smoke.sh` pass. Read in this order:

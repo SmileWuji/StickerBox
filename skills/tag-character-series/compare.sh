@@ -19,18 +19,24 @@ convert "$query[0]" -resize 400x400 -background white -flatten "$work/0-query.pn
 convert "$work/0-query.png" -gravity north -background '#ffe9a8' -splice 0x28 -font DejaVu-Sans -pointsize 18 -annotate +0+4 "0. ?" "$work/0-query.png"
 rows=("$work/0-query.png")
 
+# Character tags containing any word of the name, most posts first, so a typo or a swapped name
+# order (marisa_kirisame) still leads to the right tag.
+similar() {
+    local part
+    for part in $(tr '_()' '\n\n\n' <<<"$1" | awk 'length >= 3'); do
+        curl -s -m 20 "https://safebooru.org/index.php?page=dapi&s=tag&q=index&limit=1000&name_pattern=%25$(printf %s "$part" | jq -sRr @uri)%25" \
+            | grep -o 'type="4" count="[0-9]*" name="[^"]*"' | sed -E 's/.*count="([0-9]+)" name="([^"]*)"/\1 \2/'
+    done | awk -v t="$1" '$2 != t && !seen[$2]++' | sort -rn | head -6 \
+        | awk '{ out = out (NR > 1 ? ", " : " Similar character tags: ") $2 " (" $1 ")" } END { printf "%s", out }' | sed "s/&#039;/'/g"
+}
+
 i=0
 for tag in "$@"; do
     i=$((i + 1))
     json=$(curl -s -m 20 "$api&limit=$PER&tags=$(printf %s "$tag" | jq -sRr @uri)+solo+-multiple_girls+-comic+rating:general+sort:score")
     count=$(jq 'length' <<<"$json" 2>/dev/null || echo 0)
     if [ "${count:-0}" -eq 0 ]; then
-        hints=""
-        for prefix in "$tag" "${tag%_*}" "${tag:0:4}"; do
-            hints=$(curl -s -m 15 "https://safebooru.org/autocomplete.php?q=$(printf %s "$prefix" | jq -sRr @uri)" | jq -r '[.[:6][] | .value] | join(", ")' 2>/dev/null | sed "s/&#039;/'/g")
-            [ -n "$hints" ] && break
-        done
-        echo "$tag: nothing on safebooru.${hints:+ Similar tags: $hints}"
+        echo "$tag: nothing on safebooru.$(similar "$tag")"
         continue
     fi
     tiles=()
